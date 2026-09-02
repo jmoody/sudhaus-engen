@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+
+# Each entry is "command|purpose|install hint". Required dependencies are the
+# user's responsibility to provide; this script only verifies and reports.
+REQUIRED_DEPS=(
+  "git|Repository root discovery used by every script in script/|apt-get install -y git"
+  "make|Entry point for the lint and review targets|apt-get install -y make"
+  "curl|Downloads external assets when needed|apt-get install -y curl"
+  "az|Azure CLI used by the Terraform and provider scripts|https://learn.microsoft.com/cli/azure/install-azure-cli-linux"
+  "terraform|Provisions the Azure infrastructure under terraform/|https://developer.hashicorp.com/terraform/install"
+  "shellcheck|Shell linting run by make lint and make review|apt-get install -y shellcheck"
+  "gh|GitHub CLI used for pull request and issue workflows|https://github.com/cli/cli#installation"
+  "jq|JSON processing in helper scripts|apt-get install -y jq"
+  "sha256sum|Derives the Terraform state account name in script/tfstate-bootstrap|apt-get install -y coreutils"
+)
+
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Bootstrap a Linux development environment for engen-brews: verify the required
+system dependencies are present.
+
+This script never installs system dependencies. When something is missing it
+reports what is required and how to install it; providing them is up to you.
+
+OPTIONS:
+  -h, --help Show this help message
+EOF
+}
+
+parse_args() {
+  local arg
+  for arg in "$@"; do
+    case "${arg}" in
+      -h|--help) usage; exit 0 ;;
+      *) echo "Unknown option: ${arg}" >&2; usage >&2; exit 2 ;;
+    esac
+  done
+}
+
+report_missing() {
+  echo "" >&2
+  echo "[ERROR] Missing required dependencies:" >&2
+  local entry cmd purpose hint rest
+  for entry in "$@"; do
+    cmd="${entry%%|*}"
+    rest="${entry#*|}"
+    purpose="${rest%%|*}"
+    hint="${rest#*|}"
+    printf '  %-12s %s\n' "${cmd}" "${purpose}" >&2
+    printf '  %-12s install with: %s\n' "" "${hint}" >&2
+  done
+}
+
+check_dependencies() {
+  echo "Checking system dependencies..."
+
+  local missing=()
+  local entry cmd
+
+  for entry in "${REQUIRED_DEPS[@]}"; do
+    cmd="${entry%%|*}"
+    if command -v "${cmd}" > /dev/null 2>&1; then
+      echo "  ${cmd} ok"
+    else
+      missing+=("${entry}")
+    fi
+  done
+
+  if (( ${#missing[@]} > 0 )); then
+    report_missing "${missing[@]}"
+    echo "" >&2
+    echo "Install the dependencies above, then re-run script/bootstrap." >&2
+    exit 1
+  fi
+}
+
+main() {
+  parse_args "$@"
+
+  mkdir -p "${PROJECT_DIR}/tmp"
+
+  check_dependencies
+}
+
+main "$@"

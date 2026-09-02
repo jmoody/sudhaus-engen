@@ -1,0 +1,270 @@
+#!/usr/bin/env bash
+# script/tfstate-bootstrap provisions the Azure resources that hold Terraform
+# remote state for engen-brews: a dedicated resource group, an RBAC-only storage
+# account, and a blob container. These resources are deliberately never managed
+# by Terraform so that a workload stack's terraform destroy can never delete the
+# account holding its own state. The script is idempotent: re-running it against
+# an already-provisioned subscription is a no-op that exits zero, and running it
+# against a fresh subscription reproduces the whole backend. Sign-in is owned by
+# script/az-login; run "make az-login" first.
+
+set -euo pipefail
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+
+readonly RESOURCE_GROUP="engen-brews-tfstate-rg"
+readonly LOCATION="westeurope"
+readonly CONTAINER="tfstate"
+readonly ROLE="Storage Blob Data Contributor"
+readonly RBAC_TIMEOUT_SECONDS=300
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Provision the Azure Terraform remote-state backend (resource group, RBAC-only
+storage account, and blob container). Idempotent: safe to re-run. Requires an
+active Azure session; run "make az-login" first.
+
+OPTIONS:
+  -h, --help                  Show this help message
+
+ENVIRONMENT:
+  AZ_SUBSCRIPTION_ID          Subscription ID (required; set in .env or the
+                               environment)
+
+EOF
+}
+
+log_info() {
+  echo "[INFO] $*" >&2
+}
+
+log_error() {
+  echo "[ERROR] $*" >&2
+}
+
+require_az() {
+  if ! command -v az > /dev/null 2>&1; then
+    log_error "Azure CLI (az) is not installed."
+    log_error "Install it from https://learn.microsoft.com/cli/azure/install-azure-cli"
+    exit 1
+  fi
+}
+
+ensure_session() {
+  if ! az account get-access-token \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none > /dev/null 2>&1; then
+    log_error "No valid Azure session for subscription ${AZ_SUBSCRIPTION_ID}."
+    log_error "Run 'make az-login' first."
+    exit 1
+  fi
+}
+
+sha256_hex() {
+  local input="$1"
+  if command -v sha256sum > /dev/null 2>&1; then
+    printf '%s' "${input}" | sha256sum | cut -d' ' -f1
+  elif command -v shasum > /dev/null 2>&1; then
+    printf '%s' "${input}" | shasum -a 256 | cut -d' ' -f1
+  else
+    log_error "Neither sha256sum nor shasum is available to derive the account name."
+    exit 1
+  fi
+}
+
+derive_account_name() {
+  local subscription_lower suffix
+  subscription_lower="$(printf '%s' "${AZ_SUBSCRIPTION_ID}" | tr '[:upper:]' '[:lower:]')"
+  suffix="$(sha256_hex "${subscription_lower}" | cut -c1-6)"
+  STORAGE_ACCOUNT="engenbrewstfstate${suffix}"
+  readonly STORAGE_ACCOUNT
+  if [[ ! "${STORAGE_ACCOUNT}" =~ ^[a-z0-9]{3,24}$ ]]; then
+    log_error "Derived storage account name '${STORAGE_ACCOUNT}' is invalid."
+    exit 1
+  fi
+}
+
+ensure_resource_group() {
+  log_info "Ensuring resource group ${RESOURCE_GROUP} in ${LOCATION}"
+  az group create \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --name "${RESOURCE_GROUP}" \
+    --location "${LOCATION}" \
+    --tags project=engen-brews purpose=terraform-state created_by=script \
+    --only-show-errors \
+    --output none
+}
+
+ensure_storage_account() {
+  log_info "Ensuring storage account ${STORAGE_ACCOUNT}"
+  az storage account create \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --name "${STORAGE_ACCOUNT}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --location "${LOCATION}" \
+    --sku Standard_LRS \
+    --kind StorageV2 \
+    --min-tls-version TLS1_2 \
+    --https-only true \
+    --allow-blob-public-access false \
+    --allow-shared-key-access false \
+    --public-network-access Enabled \
+    --tags project=engen-brews purpose=terraform-state created_by=script \
+    --only-show-errors \
+    --output none
+
+  log_info "Ensuring blob versioning and soft-delete retention"
+  az storage account blob-service-properties update \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --account-name "${STORAGE_ACCOUNT}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --enable-versioning true \
+    --enable-delete-retention true \
+    --delete-retention-days 7 \
+    --enable-container-delete-retention true \
+    --container-delete-retention-days 7 \
+    --only-show-errors \
+    --output none
+}
+
+ensure_role_assignment() {
+  local principal_id account_id output status
+  principal_id="$(az ad signed-in-user show \
+    --query id -o tsv --only-show-errors)"
+  account_id="$(az storage account show \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --name "${STORAGE_ACCOUNT}" \
+    --resource-group "${RESOURCE_GROUP}" \
+    --query id -o tsv --only-show-errors)"
+
+  log_info "Ensuring '${ROLE}' role assignment for the signed-in operator"
+  status=0
+  output="$(az role assignment create \
+    --assignee-object-id "${principal_id}" \
+    --assignee-principal-type User \
+    --role "${ROLE}" \
+    --scope "${account_id}" \
+    --only-show-errors \
+    --output none 2>&1)" || status=$?
+
+  if [[ ${status} -eq 0 ]]; then
+    log_info "Role assignment created"
+  elif [[ "${output}" == *RoleAssignmentExists* ]]; then
+    log_info "Role assignment already present"
+  else
+    log_error "Failed to create '${ROLE}' role assignment:"
+    log_error "${output}"
+    exit 1
+  fi
+}
+
+ensure_container() {
+  log_info "Ensuring blob container ${CONTAINER}"
+  az storage container-rm create \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --storage-account "${STORAGE_ACCOUNT}" \
+    --name "${CONTAINER}" \
+    --only-show-errors \
+    --output none
+}
+
+wait_for_rbac() {
+  local deadline now
+  deadline=$(( $(date +%s) + RBAC_TIMEOUT_SECONDS ))
+  log_info "Waiting for role assignment to propagate to the data plane"
+  while true; do
+    if az storage blob list \
+      --subscription "${AZ_SUBSCRIPTION_ID}" \
+      --account-name "${STORAGE_ACCOUNT}" \
+      --container-name "${CONTAINER}" \
+      --auth-mode login \
+      --only-show-errors \
+      --output none > /dev/null 2>&1; then
+      log_info "Data-plane access confirmed"
+      return 0
+    fi
+    now="$(date +%s)"
+    if (( now >= deadline )); then
+      log_error "Timed out after ${RBAC_TIMEOUT_SECONDS}s waiting for RBAC propagation."
+      log_error "Re-run the script in a few minutes; provisioning is idempotent."
+      exit 1
+    fi
+    log_info "Not ready yet; retrying in 15s"
+    sleep 15
+  done
+}
+
+print_summary() {
+  log_info "Terraform remote-state backend ready:"
+  log_info "  resource group:  ${RESOURCE_GROUP}"
+  log_info "  storage account: ${STORAGE_ACCOUNT}"
+  log_info "  container:       ${CONTAINER}"
+  log_info "  region:          ${LOCATION}"
+  log_info "Initialise a workload root (added by a later stack) from its env directory:"
+  log_info "  cd terraform/envs/<env> && terraform init -backend-config=../../backend.hcl -backend-config=\"key=<env>.tfstate\""
+}
+
+load_dotenv() {
+  [[ -n "${AZ_SUBSCRIPTION_ID:-}" ]] && return 0
+  [[ -f "${PROJECT_DIR}/.env" ]] || return 0
+
+  local line value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      AZ_SUBSCRIPTION_ID=*)
+        value="${line#AZ_SUBSCRIPTION_ID=}"
+        value="${value#"${value%%[![:space:]]*}"}"
+        case "${value}" in
+          \"*)
+            value="${value#\"}"
+            value="${value%%\"*}"
+            ;;
+          \'*)
+            value="${value#\'}"
+            value="${value%%\'*}"
+            ;;
+          *)
+            value="${value%%#*}"
+            value="${value%"${value##*[![:space:]]}"}"
+            ;;
+        esac
+        [[ -n "${value}" ]] && export AZ_SUBSCRIPTION_ID="${value}"
+        ;;
+    esac
+  done < "${PROJECT_DIR}/.env"
+}
+
+main() {
+  while getopts "h-:" opt; do
+    case $opt in
+      h) usage; exit 0 ;;
+      -) case $OPTARG in
+           help) usage; exit 0 ;;
+           *) echo "Unknown option: --$OPTARG" >&2; usage >&2; exit 1 ;;
+         esac ;;
+      *) echo "Invalid option: -$OPTARG" >&2; usage >&2; exit 1 ;;
+    esac
+  done
+
+  load_dotenv
+  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) before running}"
+
+  require_az
+
+  export AZURE_CONFIG_DIR="${PROJECT_DIR}/.azure"
+
+  ensure_session
+  derive_account_name
+  ensure_resource_group
+  ensure_storage_account
+  ensure_role_assignment
+  ensure_container
+  wait_for_rbac
+  print_summary
+}
+
+main "$@"

@@ -1,0 +1,14 @@
+# GitHub Copilot Coding Agent setup steps.
+# Runs before the agent starts work on a PR or issue.
+name: copilot-setup-steps
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Bootstrap
+        run: script/bootstrap

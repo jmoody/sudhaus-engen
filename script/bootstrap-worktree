@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CLEANUP_ARMED=false
+CLEANUP_SOURCE_DIR=""
+CLEANUP_DEST_DIR=""
+CLEANUP_BRANCH=""
+
+log_info() {
+  echo "[INFO] $*"
+}
+
+log_error() {
+  echo "[ERROR] $*" >&2
+}
+
+cleanup_on_failure() {
+  local status=$?
+  if [[ "${CLEANUP_ARMED}" == "true" && "${status}" -ne 0 ]]; then
+    log_error "Bootstrap failed; removing partially created worktree ${CLEANUP_DEST_DIR}"
+    git -C "${CLEANUP_SOURCE_DIR}" worktree remove --force "${CLEANUP_DEST_DIR}" || true
+    git -C "${CLEANUP_SOURCE_DIR}" branch -D "${CLEANUP_BRANCH}" || true
+  fi
+}
+
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS] <branch-name> [base-ref]
+
+Create and provision a development git worktree for engen-brews. The worktree is
+created at <parent-of-source>/<repo-basename>-worktrees/<branch-name> on a new
+branch <branch-name>, provisioned with the gitignored operational state that
+does not travel with a checkout (.env and the Azure CLI login session), then
+bootstrapped so it passes 'make review' immediately.
+
+ARGUMENTS:
+  <branch-name>  Name of the new branch and worktree directory (required).
+  [base-ref]     Ref to branch from (default: the source checkout's HEAD).
+                 Configurable to support stacked pull requests, where a
+                 worktree branches off a parent feature branch, not mainline.
+
+OPTIONS:
+  -h, --help     Show this help message
+EOF
+}
+
+provision_optional_file() {
+  local src="$1"
+  local dst="$2"
+  local label="$3"
+  if [[ -f "${src}" ]]; then
+    cp "${src}" "${dst}"
+    log_info "Copied ${label}"
+  else
+    log_info "Skipped ${label} (not present in source checkout)"
+  fi
+}
+
+provision_azure_session() {
+  local source_dir="$1"
+  local dest_dir="$2"
+  local src_azure="${source_dir}/.azure"
+  local dst_azure="${dest_dir}/.azure"
+
+  if [[ ! -d "${src_azure}" ]]; then
+    log_info "Skipped .azure/ session (not present in source checkout)"
+    return
+  fi
+
+  mkdir -p "${dst_azure}"
+
+  # Carry the gitignored Azure CLI session (token caches) so the worktree is
+  # already signed in. .azure/config is tracked and travels with the checkout,
+  # so it is skipped here.
+  local entry name copied=false
+  for entry in "${src_azure}"/* "${src_azure}"/.[!.]*; do
+    [[ -e "${entry}" ]] || continue
+    name="$(basename "${entry}")"
+    [[ "${name}" == "config" || "${name}" == ".gitignore" ]] && continue
+    cp -R "${entry}" "${dst_azure}/"
+    copied=true
+  done
+
+  if [[ "${copied}" == "true" ]]; then
+    log_info "Copied gitignored .azure/ session state (Azure CLI login)"
+  else
+    log_info "Skipped .azure/ session state (none present; run 'make az-login' in the worktree)"
+  fi
+}
+
+provision_worktree() {
+  local source_dir="$1"
+  local dest_dir="$2"
+
+  provision_optional_file "${source_dir}/.env" "${dest_dir}/.env" ".env"
+  provision_azure_session "${source_dir}" "${dest_dir}"
+}
+
+main() {
+  while getopts "h-:" opt; do
+    case "${opt}" in
+      h) usage; exit 0 ;;
+      -) case "${OPTARG}" in
+           help) usage; exit 0 ;;
+           *) log_error "Unknown option: --${OPTARG}"; usage >&2; exit 2 ;;
+         esac ;;
+      *) log_error "Invalid option: -${OPTARG}"; usage >&2; exit 2 ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  local branch_name="${1:-}"
+  if [[ -z "${branch_name}" ]]; then
+    log_error "A branch name is required."
+    usage >&2
+    exit 2
+  fi
+  local base_ref="${2:-HEAD}"
+
+  local worktrees
+  if ! worktrees="$(git worktree list --porcelain)"; then
+    log_error "Not inside a git repository (could not resolve the source checkout)."
+    exit 1
+  fi
+  local first_line="${worktrees%%$'\n'*}"
+  local source_dir="${first_line#worktree }"
+  if [[ -z "${source_dir}" || "${source_dir}" == "${first_line}" ]]; then
+    log_error "Could not resolve the source checkout from 'git worktree list'."
+    exit 1
+  fi
+
+  local dest_root
+  dest_root="$(dirname "${source_dir}")/$(basename "${source_dir}")-worktrees"
+  local dest_dir="${dest_root}/${branch_name}"
+
+  if [[ -e "${dest_dir}" ]]; then
+    log_error "Destination already exists: ${dest_dir}"
+    log_error "Remove it with 'git worktree remove ${dest_dir}' or choose another branch name."
+    exit 1
+  fi
+
+  if git -C "${source_dir}" show-ref --verify --quiet "refs/heads/${branch_name}"; then
+    log_error "Branch already exists: ${branch_name}"
+    log_error "Choose another branch name or delete it with 'git branch -D ${branch_name}'."
+    exit 1
+  fi
+
+  mkdir -p "${dest_root}"
+  git -C "${source_dir}" worktree add -b "${branch_name}" "${dest_dir}" "${base_ref}"
+
+  CLEANUP_SOURCE_DIR="${source_dir}"
+  CLEANUP_DEST_DIR="${dest_dir}"
+  CLEANUP_BRANCH="${branch_name}"
+  CLEANUP_ARMED=true
+  trap cleanup_on_failure EXIT
+
+  provision_worktree "${source_dir}" "${dest_dir}"
+
+  log_info "Running script/bootstrap in the new worktree"
+  ( cd "${dest_dir}" && ./script/bootstrap )
+
+  log_info "Running make review in the new worktree"
+  ( cd "${dest_dir}" && make review )
+
+  CLEANUP_ARMED=false
+
+  echo "Worktree ready: ${dest_dir}"
+  echo "cd into it to start work: cd ${dest_dir}"
+}
+
+main "$@"

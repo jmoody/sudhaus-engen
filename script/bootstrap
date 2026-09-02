@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Bootstrap an engen-brews development workspace by dispatching to the OS-specific
+script (script/bootstrap-macos on Darwin, script/bootstrap-linux on Linux).
+All arguments are forwarded unchanged.
+
+OPTIONS:
+  -h, --help     Show this help message
+EOF
+}
+
+main() {
+  for arg in "$@"; do
+    case "$arg" in
+      -h|--help) usage; exit 0 ;;
+    esac
+  done
+
+  local os
+  os="$(uname -s)"
+  case "$os" in
+    Darwin)
+      exec "${PROJECT_DIR}/script/bootstrap-macos" "$@"
+      ;;
+    Linux)
+      exec "${PROJECT_DIR}/script/bootstrap-linux" "$@"
+      ;;
+    *)
+      echo "Unsupported OS: ${os}" >&2
+      echo "engen-brews supports macOS (Darwin) and Linux only." >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

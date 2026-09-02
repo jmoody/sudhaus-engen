@@ -1,0 +1,38 @@
+name: test
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.14-bookworm
+        env:
+          POSTGRES_DB: engen_brews_test
+          POSTGRES_PASSWORD: engen_brews
+          POSTGRES_USER: engen_brews
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U engen_brews -d engen_brews_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Bootstrap
+        run: script/bootstrap
+      - name: Unit tests
+        env:
+          ENGEN_BREWS_POSTGRES_DSN: postgres://engen_brews:engen_brews@127.0.0.1:5432/engen_brews_test?sslmode=disable
+        run: |
+          go clean -testcache
+          make test

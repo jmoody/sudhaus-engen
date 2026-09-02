@@ -1,0 +1,150 @@
+#!/usr/bin/env bash
+# script/terraform dispatches Terraform commands for the prod workload root.
+# It maps the repo-wide AZ_SUBSCRIPTION_ID onto Terraform's
+# TF_VAR_subscription_id (never committed), reuses the repo-local Azure session
+# under .azure/ that script/az-login establishes, and drives Terraform through
+# -chdir so init, plan, and apply always target terraform/envs/prod with the
+# shared backend config and pinned region. Sign-in is owned by script/az-login;
+# run "make az-login" first.
+
+set -euo pipefail
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+
+readonly ENV_DIR="terraform/envs/prod"
+readonly BACKEND_CONFIG="../../backend.hcl"
+readonly STATE_KEY="prod.tfstate"
+readonly VAR_FILE="../../region.tfvars"
+readonly PLAN_FILE="tf.plan"
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") {init|plan|apply} [terraform args...]
+
+Drive Terraform for the prod workload root (${ENV_DIR}). Requires an active
+Azure session; run "make az-login" first.
+
+SUBCOMMANDS:
+  init              terraform init with the shared backend and prod state key
+  plan              terraform plan, saved to ${PLAN_FILE} (gitignored)
+  apply             terraform apply of the saved ${PLAN_FILE}
+
+Run plan then apply so the applied changes are exactly the reviewed plan.
+Extra arguments are forwarded to Terraform, e.g.
+  $(basename "$0") plan -target=azurerm_container_registry.prod
+
+ENVIRONMENT:
+  AZ_SUBSCRIPTION_ID  Subscription ID, exported to Terraform as
+                       TF_VAR_subscription_id (required; set in .env or the
+                       environment).
+EOF
+}
+
+log_info() {
+  echo "[INFO] $*" >&2
+}
+
+log_error() {
+  echo "[ERROR] $*" >&2
+}
+
+require_terraform() {
+  if ! command -v terraform > /dev/null 2>&1; then
+    log_error "Terraform is not installed."
+    log_error "Install it from https://developer.hashicorp.com/terraform/install"
+    exit 1
+  fi
+}
+
+require_session() {
+  if ! az account get-access-token \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none > /dev/null 2>&1; then
+    log_error "No valid Azure session for subscription ${AZ_SUBSCRIPTION_ID}."
+    log_error "Run \"make az-login\" first."
+    exit 1
+  fi
+}
+
+load_dotenv() {
+  [[ -n "${AZ_SUBSCRIPTION_ID:-}" ]] && return 0
+  [[ -f "${PROJECT_DIR}/.env" ]] || return 0
+
+  local line value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      AZ_SUBSCRIPTION_ID=*)
+        value="${line#AZ_SUBSCRIPTION_ID=}"
+        value="${value#"${value%%[![:space:]]*}"}"
+        case "${value}" in
+          \"*)
+            value="${value#\"}"
+            value="${value%%\"*}"
+            ;;
+          \'*)
+            value="${value#\'}"
+            value="${value%%\'*}"
+            ;;
+          *)
+            value="${value%%#*}"
+            value="${value%"${value##*[![:space:]]}"}"
+            ;;
+        esac
+        [[ -n "${value}" ]] && export AZ_SUBSCRIPTION_ID="${value}"
+        ;;
+    esac
+  done < "${PROJECT_DIR}/.env"
+}
+
+main() {
+  local subcommand="${1:-}"
+
+  case "${subcommand}" in
+    ""|-h|--help) usage; exit 0 ;;
+    init|plan|apply) shift ;;
+    *)
+      log_error "Unknown subcommand: ${subcommand}"
+      usage >&2
+      exit 2
+      ;;
+  esac
+
+  require_terraform
+
+  load_dotenv
+  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) before running}"
+
+  export AZURE_CONFIG_DIR="${PROJECT_DIR}/.azure"
+  require_session
+  export TF_VAR_subscription_id="${AZ_SUBSCRIPTION_ID}"
+
+  cd "${PROJECT_DIR}"
+
+  case "${subcommand}" in
+    init)
+      log_info "Initialising ${ENV_DIR} (key=${STATE_KEY})"
+      exec terraform -chdir="${ENV_DIR}" init \
+        -backend-config="${BACKEND_CONFIG}" \
+        -backend-config="key=${STATE_KEY}" \
+        "$@"
+      ;;
+    plan)
+      log_info "Writing plan to ${ENV_DIR}/${PLAN_FILE}"
+      exec terraform -chdir="${ENV_DIR}" plan \
+        -var-file="${VAR_FILE}" \
+        -out="${PLAN_FILE}" \
+        "$@"
+      ;;
+    apply)
+      if [[ ! -f "${PROJECT_DIR}/${ENV_DIR}/${PLAN_FILE}" ]]; then
+        log_error "No saved plan at ${ENV_DIR}/${PLAN_FILE}. Run \"make plan\" first."
+        exit 1
+      fi
+      exec terraform -chdir="${ENV_DIR}" apply "$@" "${PLAN_FILE}"
+      ;;
+  esac
+}
+
+main "$@"

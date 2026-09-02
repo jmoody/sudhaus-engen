@@ -1,0 +1,29 @@
+.DS_Store
+
+*.key
+*.token
+*.jwt
+*.pat
+
+tmp
+.tmp
+scratch
+_tools
+bin
+data/
+
+# Test + coverage artefacts
+*.test
+coverage.out
+coverage.html
+
+# Local environment overrides
+.env
+.env.local
+.env.*
+!.env.example
+
+# Azure CLI config dir (script/az-login writes here via AZURE_CONFIG_DIR=.azure).
+# Track only the non-secret defaults file; ignore token caches and everything else.
+.azure/*
+!.azure/config

@@ -1,0 +1,35 @@
+# Local .terraform directories and provider caches.
+**/.terraform/*
+
+# State files and backups (state lives in the azurerm backend, never in git).
+*.tfstate
+*.tfstate.*
+
+# Crash logs.
+crash.log
+crash.*.log
+
+# Local-only variable files that may hold secrets.
+*.tfvars.local
+terraform.tfvars.local
+
+# Override files, which are typically local machine overrides.
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Plan output.
+*tfplan*
+*.plan
+
+# CLI configuration files.
+.terraformrc
+terraform.rc
+
+# macOS finder metadata.
+.DS_Store
+
+# Tracked on purpose (do not ignore):
+#   *.tfvars               non-secret per-environment values
+#   .terraform.lock.hcl    provider dependency lock for reproducible downloads

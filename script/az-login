@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+# script/az-login signs in to the Azure subscription used by the Azure MCP
+# server and the "azure" tool in Copilot. It sets AZURE_CONFIG_DIR to the
+# repo-local .azure/ directory so the Azure CLI's token cache and profile
+# stay out of the user's global ~/.azure and out of git (only .azure/config
+# is tracked; see .gitignore).
+
+set -euo pipefail
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Sign in to the Azure subscription used by the Azure MCP server. Reuses an
+existing session if one is already valid for the subscription.
+
+OPTIONS:
+  -h, --help                  Show this help message
+  -f, --force                 Force a fresh interactive sign-in
+
+ENVIRONMENT:
+  AZ_SUBSCRIPTION_ID          Subscription ID (required; set in .env or the
+                               environment)
+
+EOF
+}
+
+log_info() {
+  echo "[INFO] $*" >&2
+}
+
+require_az() {
+  if ! command -v az > /dev/null 2>&1; then
+    echo "[ERROR] Azure CLI (az) is not installed." >&2
+    echo "[ERROR] Install it from https://learn.microsoft.com/cli/azure/install-azure-cli" >&2
+    exit 1
+  fi
+}
+
+have_valid_session() {
+  az account get-access-token \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none > /dev/null 2>&1
+}
+
+do_login() {
+  log_info "Signing in to Azure"
+  az login --output none
+}
+
+select_subscription() {
+  log_info "Selecting subscription ${AZ_SUBSCRIPTION_ID}"
+  az account set --subscription "${AZ_SUBSCRIPTION_ID}"
+}
+
+show_active() {
+  log_info "Signed in to the Azure subscription:"
+  az account show \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --query "{name:name, subscriptionId:id, tenantId:tenantId, user:user.name}" \
+    --output table
+}
+
+load_dotenv() {
+  [[ -n "${AZ_SUBSCRIPTION_ID:-}" ]] && return 0
+  [[ -f "${PROJECT_DIR}/.env" ]] || return 0
+
+  local line value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      AZ_SUBSCRIPTION_ID=*)
+        value="${line#AZ_SUBSCRIPTION_ID=}"
+        value="${value#"${value%%[![:space:]]*}"}"
+        case "${value}" in
+          \"*)
+            value="${value#\"}"
+            value="${value%%\"*}"
+            ;;
+          \'*)
+            value="${value#\'}"
+            value="${value%%\'*}"
+            ;;
+          *)
+            value="${value%%#*}"
+            value="${value%"${value##*[![:space:]]}"}"
+            ;;
+        esac
+        [[ -n "${value}" ]] && export AZ_SUBSCRIPTION_ID="${value}"
+        ;;
+    esac
+  done < "${PROJECT_DIR}/.env"
+}
+
+main() {
+  local force=false
+
+  while getopts "hf-:" opt; do
+    case $opt in
+      h) usage; exit 0 ;;
+      f) force=true ;;
+      -) case $OPTARG in
+           help) usage; exit 0 ;;
+           force) force=true ;;
+           *) echo "Unknown option: --$OPTARG" >&2; usage >&2; exit 1 ;;
+         esac ;;
+      *) echo "Invalid option: -$OPTARG" >&2; usage >&2; exit 1 ;;
+    esac
+  done
+
+  load_dotenv
+  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) before running}"
+
+  require_az
+
+  export AZURE_CONFIG_DIR="${PROJECT_DIR}/.azure"
+
+  if [[ "${force}" == "true" ]]; then
+    do_login
+  elif have_valid_session; then
+    log_info "Existing Azure session found; reusing it."
+  else
+    do_login
+  fi
+
+  select_subscription
+  show_active
+
+  log_info "Azure sign-in complete."
+}
+
+main "$@"

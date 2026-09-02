@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+# script/register-providers registers the Azure resource providers that
+# engen-brews's infrastructure depends on: Container Apps, its container
+# registry, Log Analytics, Azure Monitor, and DNS/custom-domain networking.
+# The script registers every required provider rather than only the ones
+# currently missing so that pointing it at a fresh subscription at production
+# cutover reproduces the whole set. Provider registration is subscription-scoped
+# state that Terraform does not own, so it lives here alongside
+# script/tfstate-bootstrap rather than in a *.tf file. The script is idempotent:
+# re-running it against an already-registered subscription is a no-op that exits
+# zero. Sign-in is owned by script/az-login; run "make az-login" first.
+
+set -euo pipefail
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+
+readonly REQUIRED_PROVIDERS=(
+  "Microsoft.App"
+  "Microsoft.ContainerRegistry"
+  "Microsoft.OperationalInsights"
+  "Microsoft.Insights"
+  "Microsoft.Network"
+)
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Register the Azure resource providers engen-brews's infrastructure depends on
+(Container Apps, container registry, Log Analytics, Azure Monitor, and DNS
+networking), for subscription portability. Idempotent: safe to re-run. Requires
+an active Azure session; run "make az-login" first.
+
+OPTIONS:
+  -h, --help                  Show this help message
+
+ENVIRONMENT:
+  AZ_SUBSCRIPTION_ID          Subscription ID (required; set in .env or the
+                               environment)
+
+EOF
+}
+
+log_info() {
+  echo "[INFO] $*" >&2
+}
+
+log_error() {
+  echo "[ERROR] $*" >&2
+}
+
+require_az() {
+  if ! command -v az > /dev/null 2>&1; then
+    log_error "Azure CLI (az) is not installed."
+    log_error "Install it from https://learn.microsoft.com/cli/azure/install-azure-cli"
+    exit 1
+  fi
+}
+
+ensure_session() {
+  if ! az account get-access-token \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none > /dev/null 2>&1; then
+    log_error "No valid Azure session for subscription ${AZ_SUBSCRIPTION_ID}."
+    log_error "Run 'make az-login' first."
+    exit 1
+  fi
+}
+
+registration_state() {
+  local namespace="$1"
+  az provider show \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --namespace "${namespace}" \
+    --query registrationState \
+    --output tsv \
+    --only-show-errors
+}
+
+ensure_provider() {
+  local namespace="$1" state
+  state="$(registration_state "${namespace}")"
+  if [[ "${state}" == "Registered" ]]; then
+    log_info "${namespace} already registered"
+    return 0
+  fi
+
+  log_info "Registering ${namespace} (current state: ${state})"
+  az provider register \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --namespace "${namespace}" \
+    --wait \
+    --only-show-errors \
+    --output none
+
+  state="$(registration_state "${namespace}")"
+  if [[ "${state}" != "Registered" ]]; then
+    log_error "${namespace} did not reach Registered (state: ${state})."
+    exit 1
+  fi
+  log_info "${namespace} registered"
+}
+
+print_summary() {
+  log_info "Required resource providers registered on subscription ${AZ_SUBSCRIPTION_ID}:"
+  local namespace
+  for namespace in "${REQUIRED_PROVIDERS[@]}"; do
+    log_info "  ${namespace}"
+  done
+}
+
+load_dotenv() {
+  [[ -n "${AZ_SUBSCRIPTION_ID:-}" ]] && return 0
+  [[ -f "${PROJECT_DIR}/.env" ]] || return 0
+
+  local line value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      AZ_SUBSCRIPTION_ID=*)
+        value="${line#AZ_SUBSCRIPTION_ID=}"
+        value="${value#"${value%%[![:space:]]*}"}"
+        case "${value}" in
+          \"*)
+            value="${value#\"}"
+            value="${value%%\"*}"
+            ;;
+          \'*)
+            value="${value#\'}"
+            value="${value%%\'*}"
+            ;;
+          *)
+            value="${value%%#*}"
+            value="${value%"${value##*[![:space:]]}"}"
+            ;;
+        esac
+        [[ -n "${value}" ]] && export AZ_SUBSCRIPTION_ID="${value}"
+        ;;
+    esac
+  done < "${PROJECT_DIR}/.env"
+}
+
+main() {
+  while getopts "h-:" opt; do
+    case $opt in
+      h) usage; exit 0 ;;
+      -) case $OPTARG in
+           help) usage; exit 0 ;;
+           *) echo "Unknown option: --$OPTARG" >&2; usage >&2; exit 1 ;;
+         esac ;;
+      *) echo "Invalid option: -$OPTARG" >&2; usage >&2; exit 1 ;;
+    esac
+  done
+
+  load_dotenv
+  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) before running}"
+
+  require_az
+
+  export AZURE_CONFIG_DIR="${PROJECT_DIR}/.azure"
+
+  ensure_session
+
+  local namespace
+  for namespace in "${REQUIRED_PROVIDERS[@]}"; do
+    ensure_provider "${namespace}"
+  done
+
+  print_summary
+}
+
+main "$@"

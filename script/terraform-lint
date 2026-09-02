@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Credential-free Terraform lint and validation for make review. Checks
+formatting with terraform fmt and validates each root with terraform validate.
+It never contacts Azure, never runs terraform plan or apply, and needs no
+backend access or credentials.
+
+Validation runs against a throwaway copy of each root initialised with
+-backend=false, so an operator's real backend-initialised .terraform directory
+is left untouched. Provider downloads are cached under tmp/ to avoid fetching
+the same provider package twice; terraform init may still contact the provider
+registry for metadata, so a run is not guaranteed to work fully offline.
+
+When terraform is not installed the script prints a note and exits 0, matching
+the bootstrap contract that treats terraform as an operator-only tool rather
+than a required dependency.
+
+OPTIONS:
+  -h, --help     Show this help message
+EOF
+}
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+readonly TERRAFORM_DIR="${PROJECT_DIR}/terraform"
+readonly PLUGIN_CACHE_DIR="${PROJECT_DIR}/tmp/terraform-plugin-cache"
+
+log_info() {
+  echo "[INFO] $*"
+}
+
+log_error() {
+  echo "[ERROR] $*" >&2
+}
+
+TMP_ROOT=""
+cleanup() {
+  if [[ -n "${TMP_ROOT}" && -d "${TMP_ROOT}" ]]; then
+    rm -rf "${TMP_ROOT}"
+  fi
+}
+trap cleanup EXIT
+
+find_roots() {
+  find "${TERRAFORM_DIR}" -type f -name '*.tf' -not -path '*/.terraform/*' \
+    -exec dirname {} \; | sort -u
+}
+
+check_fmt() {
+  local root="$1"
+  local rel="${root#"${PROJECT_DIR}/"}"
+  log_info "terraform fmt -check ${rel}"
+  if ! terraform fmt -check "${root}"; then
+    log_error "terraform fmt found unformatted files in ${rel}; run 'terraform fmt ${rel}'"
+    return 1
+  fi
+  return 0
+}
+
+validate_root() {
+  local root="$1"
+  local rel="${root#"${PROJECT_DIR}/"}"
+  local work="${TMP_ROOT}/${rel//\//_}"
+
+  mkdir -p "${work}"
+  cp "${root}"/*.tf "${work}/"
+  if [[ -f "${root}/.terraform.lock.hcl" ]]; then
+    cp "${root}/.terraform.lock.hcl" "${work}/"
+  fi
+
+  log_info "terraform validate ${rel}"
+  if ! terraform -chdir="${work}" init -backend=false -input=false -no-color \
+    > /dev/null; then
+    log_error "terraform init -backend=false failed for ${rel}"
+    return 1
+  fi
+  if ! terraform -chdir="${work}" validate -no-color; then
+    log_error "terraform validate failed for ${rel}"
+    return 1
+  fi
+  return 0
+}
+
+main() {
+  while getopts "h-:" opt; do
+    case "${opt}" in
+      h)
+        usage
+        exit 0
+        ;;
+      -)
+        case "${OPTARG}" in
+          help)
+            usage
+            exit 0
+            ;;
+          *)
+            echo "Unknown option: --${OPTARG}" >&2
+            usage >&2
+            exit 2
+            ;;
+        esac
+        ;;
+      *)
+        usage >&2
+        exit 2
+        ;;
+    esac
+  done
+
+  if [[ ! -d "${TERRAFORM_DIR}" ]]; then
+    log_info "no terraform/ directory; nothing to lint"
+    exit 0
+  fi
+
+  if ! command -v terraform > /dev/null 2>&1; then
+    log_info "terraform not installed; skipping Terraform lint and validation"
+    exit 0
+  fi
+
+  mkdir -p "${PLUGIN_CACHE_DIR}"
+  export TF_PLUGIN_CACHE_DIR="${PLUGIN_CACHE_DIR}"
+  TMP_ROOT="$(mktemp -d -p "${PROJECT_DIR}/tmp" terraform-lint.XXXXXX)"
+
+  local status=0
+  local root
+  while IFS= read -r root; do
+    check_fmt "${root}" || status=1
+    validate_root "${root}" || status=1
+  done < <(find_roots)
+
+  if [[ "${status}" -ne 0 ]]; then
+    log_error "Terraform lint failed"
+    exit 1
+  fi
+
+  log_info "Terraform lint passed"
+}
+
+main "$@"
