@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Pinned versions of the Go tools installed into bin/. The tool-pins workflow
+# reports when a newer release exists; bump the versions here.
+readonly GOIMPORTS_MODULE="golang.org/x/tools"
+readonly GOIMPORTS_VERSION="v0.52.0"
+readonly GOLANGCI_LINT_MODULE="github.com/golangci/golangci-lint/v2"
+readonly GOLANGCI_LINT_VERSION="v2.15.0"
+
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Install the pinned Go tools (goimports, golangci-lint) into bin/.
+
+OPTIONS:
+  -h, --help     Show this help message
+EOF
+}
+
+install_tools() {
+  local project_dir tools_dir go_version
+  project_dir="$(git rev-parse --show-toplevel)"
+  tools_dir="${project_dir}/_tools"
+  go_version="$(grep '^go ' "${project_dir}/go.mod" | awk '{print $2}')"
+
+  mkdir -p "${tools_dir}" "${project_dir}/bin"
+
+  (
+    set -e
+    cd "${tools_dir}"
+    export GOBIN="${project_dir}/bin"
+    export GOTOOLCHAIN="auto"
+
+    if [[ ! -f "go.mod" ]]; then
+      go mod init tools
+    fi
+
+    go mod edit -go="${go_version}"
+
+    go install "${GOIMPORTS_MODULE}/cmd/goimports@${GOIMPORTS_VERSION}"
+    go install "${GOLANGCI_LINT_MODULE}/cmd/golangci-lint@${GOLANGCI_LINT_VERSION}"
+  )
+}
+
+main() {
+  case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+    "") ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+
+  install_tools
+}
+
+# Allow .github/workflows/scripts/check-tool-pins to source the pins without installing.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

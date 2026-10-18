@@ -13,8 +13,9 @@ readonly PROJECT_DIR
 # Each entry is "command|purpose|install hint". Required dependencies are the
 # user's responsibility to provide; this script only verifies and reports.
 REQUIRED_DEPS=(
+  "go|Go toolchain used to build sudhaus-engen and install its lint tools|brew install go"
   "git|Repository root discovery used by every script in script/|xcode-select --install"
-  "make|Entry point for the lint and review targets|xcode-select --install"
+  "make|Entry point for the build, lint, test, and review targets|xcode-select --install"
   "curl|Downloads external assets when needed|brew install curl"
   "az|Azure CLI used by the Terraform and provider scripts|brew install azure-cli"
   "terraform|Provisions the Azure infrastructure under terraform/|brew install terraform"
@@ -29,7 +30,7 @@ usage() {
 Usage: $0 [OPTIONS]
 
 Bootstrap a sudhaus-engen development workspace on macOS: verify the required
-system dependencies are present.
+system dependencies are present and install project-local Go tools into bin/.
 
 This script never installs system dependencies. When something is missing it
 reports what is required and how to install it; providing them is up to you.
@@ -91,12 +92,17 @@ check_dependencies() {
   fi
 }
 
+install_tools() {
+  "${PROJECT_DIR}/script/install-tools"
+}
+
 main() {
   parse_args "$@"
 
   mkdir -p "${PROJECT_DIR}/tmp"
 
   check_dependencies
+  install_tools
 }
 
 main "$@"

@@ -21,3 +21,4 @@ jobs:
           make tidy
           git diff --exit-code go.mod go.sum
       - run: make build
+      - run: make docker-build

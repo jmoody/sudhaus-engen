@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROJECT_DIR="$(git rev-parse --show-toplevel)"
+readonly PROJECT_DIR
+
+# shellcheck source=/dev/null
+source "${PROJECT_DIR}/script/install-tools"
+
+usage() {
+  cat << EOF
+Usage: $0 [OPTIONS]
+
+Compare the tool versions pinned in script/install-tools with the latest
+releases and exit non-zero when any pin is out of date. Requires network access.
+
+OPTIONS:
+  -h, --help     Show this help message
+EOF
+}
+
+# Prints a status line and returns non-zero when the pin differs from the latest release.
+check_pin() {
+  local module="$1" pinned="$2" latest
+  latest="$(go list -m -f '{{.Version}}' "${module}@latest")"
+
+  if [[ "${latest}" == "${pinned}" ]]; then
+    echo "[INFO] ${module} ${pinned} is current"
+    return 0
+  fi
+
+  echo "[ERROR] ${module} is pinned at ${pinned}; latest is ${latest}" >&2
+  return 1
+}
+
+main() {
+  case "${1:-}" in
+    -h|--help) usage; exit 0 ;;
+    "") ;;
+    *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
+  esac
+
+  local outdated=0
+  check_pin "${GOIMPORTS_MODULE}" "${GOIMPORTS_VERSION}" || outdated=1
+  check_pin "${GOLANGCI_LINT_MODULE}" "${GOLANGCI_LINT_VERSION}" || outdated=1
+
+  if (( outdated > 0 )); then
+    echo "Update the pins in script/install-tools." >&2
+    exit 1
+  fi
+}
+
+main "$@"

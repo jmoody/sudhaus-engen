@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-Sudhaus Engen (sudhaus-engen.de) is a single-developer brewing-calendar website for a German audience. It renders brew-day events plus the legally required German pages (Impressum and Datenschutzerklarung) and sets no cookies. The service is implemented in Go and ships as a Docker container. It is hosted on an Azure Virtual Machine in West Europe, provisioned and maintained with Terraform. See `docs/adrs/` for the accepted hosting and deploy-topology decision.
+Sudhaus Engen (sudhaus-engen.de) is a single-developer brewing-calendar website for a German audience. It renders brew-day events plus the legally required German pages (Impressum and Datenschutzerklarung) and sets no cookies. The service is implemented in Go and ships as a Docker container. It is hosted on Azure Container Apps in West Europe, provisioned and maintained with Terraform. See `docs/adrs/` for the accepted hosting and deploy-topology decision.
 
 ## Companion instructions
 

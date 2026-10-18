@@ -8,8 +8,9 @@ readonly PROJECT_DIR
 # Each entry is "command|purpose|install hint". Required dependencies are the
 # user's responsibility to provide; this script only verifies and reports.
 REQUIRED_DEPS=(
+  "go|Go toolchain used to build sudhaus-engen and install its lint tools|https://go.dev/dl/"
   "git|Repository root discovery used by every script in script/|apt-get install -y git"
-  "make|Entry point for the lint and review targets|apt-get install -y make"
+  "make|Entry point for the build, lint, test, and review targets|apt-get install -y make"
   "curl|Downloads external assets when needed|apt-get install -y curl"
   "az|Azure CLI used by the Terraform and provider scripts|https://learn.microsoft.com/cli/azure/install-azure-cli-linux"
   "terraform|Provisions the Azure infrastructure under terraform/|https://developer.hashicorp.com/terraform/install"
@@ -24,7 +25,8 @@ usage() {
 Usage: $0 [OPTIONS]
 
 Bootstrap a Linux development environment for sudhaus-engen: verify the required
-system dependencies are present.
+system dependencies are present and install project-local Go tools into
+${PROJECT_DIR}/bin.
 
 This script never installs system dependencies. When something is missing it
 reports what is required and how to install it; providing them is up to you.
@@ -81,12 +83,17 @@ check_dependencies() {
   fi
 }
 
+install_tools() {
+  "${PROJECT_DIR}/script/install-tools"
+}
+
 main() {
   parse_args "$@"
 
   mkdir -p "${PROJECT_DIR}/tmp"
 
   check_dependencies
+  install_tools
 }
 
 main "$@"

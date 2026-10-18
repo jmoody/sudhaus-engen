@@ -38,10 +38,10 @@ RUN apt-get update \
 
 ## Shell selection
 
-Use `bash` when you need bash-specific features:
+Use `bash` when you need bash-specific features. Quote the delimiter (`<<'EOF'`) so `/bin/sh` does not expand `$` variables and `$(...)` before bash runs the script:
 
 ```dockerfile
-RUN <<EOF bash
+RUN <<'EOF' bash
 set -euo pipefail
 if [[ -f /tmp/config ]]; then
  source /tmp/config
