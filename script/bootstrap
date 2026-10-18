@@ -9,7 +9,7 @@ usage() {
   cat << EOF
 Usage: $0 [OPTIONS]
 
-Bootstrap an engen-brews development workspace by dispatching to the OS-specific
+Bootstrap a sudhaus-engen development workspace by dispatching to the OS-specific
 script (script/bootstrap-macos on Darwin, script/bootstrap-linux on Linux).
 All arguments are forwarded unchanged.
 
@@ -36,7 +36,7 @@ main() {
       ;;
     *)
       echo "Unsupported OS: ${os}" >&2
-      echo "engen-brews supports macOS (Darwin) and Linux only." >&2
+      echo "sudhaus-engen supports macOS (Darwin) and Linux only." >&2
       exit 1
       ;;
   esac

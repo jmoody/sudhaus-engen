@@ -1,4 +1,4 @@
-# The region is pinned to West Europe for every engen-brews workload resource.
+# The region is pinned to West Europe for every sudhaus-engen workload resource.
 # It is declared with no default so a plan or apply that forgets
 # -var-file=../../region.tfvars fails loudly rather than silently falling back
 # to a provider default. See terraform/README.md, "Region".
@@ -7,11 +7,11 @@ variable "location" {
   type        = string
 }
 
-# The subscription id is an input, never committed: this repository is public
-# and Terraform must be subscription-portable. It has no default so a missing
+# The subscription id is an input, never a literal in a *.tf or *.tfvars file,
+# so Terraform stays subscription-portable. It has no default so a missing
 # value fails loudly instead of silently falling back to the Azure CLI's active
-# subscription. Supply it out-of-band, e.g. export TF_VAR_subscription_id=...
+# subscription. script/terraform supplies it as TF_VAR_subscription_id.
 variable "subscription_id" {
-  description = "Azure subscription id for this root, supplied via TF_VAR_subscription_id or -var, never committed."
+  description = "Azure subscription id for this root, supplied via TF_VAR_subscription_id or -var, never a literal in configuration."
   type        = string
 }

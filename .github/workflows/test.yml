@@ -12,13 +12,13 @@ jobs:
       postgres:
         image: postgres:16.14-bookworm
         env:
-          POSTGRES_DB: engen_brews_test
-          POSTGRES_PASSWORD: engen_brews
-          POSTGRES_USER: engen_brews
+          POSTGRES_DB: sudhaus_engen_test
+          POSTGRES_PASSWORD: sudhaus_engen
+          POSTGRES_USER: sudhaus_engen
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U engen_brews -d engen_brews_test"
+          --health-cmd "pg_isready -U sudhaus_engen -d sudhaus_engen_test"
           --health-interval 2s
           --health-timeout 5s
           --health-retries 30
@@ -32,7 +32,7 @@ jobs:
         run: script/bootstrap
       - name: Unit tests
         env:
-          ENGEN_BREWS_POSTGRES_DSN: postgres://engen_brews:engen_brews@127.0.0.1:5432/engen_brews_test?sslmode=disable
+          SUDHAUS_ENGEN_POSTGRES_DSN: postgres://sudhaus_engen:sudhaus_engen@127.0.0.1:5432/sudhaus_engen_test?sslmode=disable
         run: |
           go clean -testcache
           make test

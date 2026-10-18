@@ -7,7 +7,7 @@
 # into each resource so the contract lives in a single place.
 locals {
   common_tags = {
-    service     = "engen-brews"
+    service     = "sudhaus-engen"
     environment = "production"
   }
 }

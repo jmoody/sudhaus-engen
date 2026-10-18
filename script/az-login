@@ -22,8 +22,9 @@ OPTIONS:
   -f, --force                 Force a fresh interactive sign-in
 
 ENVIRONMENT:
-  AZ_SUBSCRIPTION_ID          Subscription ID (required; set in .env or the
-                               environment)
+  AZ_SUBSCRIPTION_ID          Subscription ID. The environment overrides .env,
+                               which overrides defaults.subscription in
+                               .azure/config.
 
 EOF
 }
@@ -95,6 +96,26 @@ load_dotenv() {
   done < "${PROJECT_DIR}/.env"
 }
 
+load_azure_config_default() {
+  [[ -n "${AZ_SUBSCRIPTION_ID:-}" ]] && return 0
+
+  local config="${PROJECT_DIR}/.azure/config"
+  [[ -f "${config}" ]] || return 0
+
+  local line section="" value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      \[*\]) section="${line}" ;;
+      subscription*=*)
+        [[ "${section}" == "[defaults]" ]] || continue
+        value="${line#*=}"
+        value="${value//[[:space:]\"\']/}"
+        [[ -n "${value}" ]] && export AZ_SUBSCRIPTION_ID="${value}"
+        ;;
+    esac
+  done < "${config}"
+}
+
 main() {
   local force=false
 
@@ -112,7 +133,8 @@ main() {
   done
 
   load_dotenv
-  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) before running}"
+  load_azure_config_default
+  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) or defaults.subscription in .azure/config}"
 
   require_az
 

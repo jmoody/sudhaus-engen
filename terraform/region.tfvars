@@ -1,4 +1,4 @@
-# Region pin for every engen-brews Azure workload stack, shared by all roots.
+# Region pin for every sudhaus-engen Azure workload stack, shared by all roots.
 #
 # West Europe is the chosen region, matching ADR-0001. Pinning to a single EU
 # region is a compliance decision: it keeps visitor data, event content, and

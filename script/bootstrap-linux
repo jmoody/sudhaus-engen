@@ -23,7 +23,7 @@ usage() {
   cat << EOF
 Usage: $0 [OPTIONS]
 
-Bootstrap a Linux development environment for engen-brews: verify the required
+Bootstrap a Linux development environment for sudhaus-engen: verify the required
 system dependencies are present.
 
 This script never installs system dependencies. When something is missing it

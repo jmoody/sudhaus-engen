@@ -1,6 +1,6 @@
-# Terraform for engen-brews
+# Terraform for sudhaus-engen
 
-This directory holds the Terraform configuration for engen-brews's Azure infrastructure. The remote-state backend that every root points at is provisioned by `script/tfstate-bootstrap` and is never managed by Terraform.
+This directory holds the Terraform configuration for sudhaus-engen's Azure infrastructure. The remote-state backend that every root points at is provisioned by `script/tfstate-bootstrap` and is never managed by Terraform.
 
 ## Remote state
 
@@ -8,18 +8,18 @@ State lives in a dedicated, RBAC-only Azure storage account. The backend resourc
 
 | Item            | Value                        |
 | --------------- | ---------------------------- |
-| Resource group  | `engen-brews-tfstate-rg`     |
-| Storage account | `engenbrewstfstate<suffix>`  |
+| Resource group  | `sudhaus-engen-tfstate-rg`   |
+| Storage account | `sudhausengentf<suffix>`     |
 | Container       | `tfstate`                    |
 | Blob key        | `<env>.tfstate`              |
 
-The `<suffix>` is the first six characters of the SHA-256 hash of the lowercased subscription id, so the account name is deterministic and re-derivable at cutover without any bookkeeping. For the current subscription the account is `engenbrewstfstate167748`, which is the name committed in `backend.hcl`.
+The `<suffix>` is the first six characters of the SHA-256 hash of the lowercased subscription id, so the account name is deterministic and re-derivable at cutover without any bookkeeping. For the current subscription the account is `sudhausengentf167748`, which is the name committed in `backend.hcl`. The account name is `sudhausengentf` plus the suffix, 20 characters, because Azure limits storage account names to 24 lowercase letters and digits.
 
 `script/tfstate-bootstrap` provisions the resource group, storage account, blob container, and the operator's `Storage Blob Data Contributor` role assignment. It is idempotent, so re-running it is a no-op, and it is subscription-portable, so pointing it at a fresh subscription reproduces the whole backend. Terraform must never manage these resources: keeping them out of every `*.tf` file guarantees a workload stack's `terraform destroy` can never delete the account holding its own state, and it keeps `make review` credential-free.
 
 ## Resource providers
 
-Azure gates each resource type behind a subscription-scoped resource provider that must be registered before any resource of that type can be created. engen-brews depends on five providers; `Microsoft.App` (Container Apps) gates the workload compute, and the other four back the container registry, Log Analytics, metrics, and DNS/custom-domain networking.
+Azure gates each resource type behind a subscription-scoped resource provider that must be registered before any resource of that type can be created. sudhaus-engen depends on five providers; `Microsoft.App` (Container Apps) gates the workload compute, and the other four back the container registry, Log Analytics, metrics, and DNS/custom-domain networking.
 
 | Provider                        | Backs                            |
 | ------------------------------- | -------------------------------- |
@@ -37,7 +37,7 @@ script/register-providers
 
 ## Region
 
-Every engen-brews Azure workload resource is pinned to **West Europe** (`westeurope`). Pinning to a single EU region is a compliance decision: it keeps all data in one EU geography and avoids international-transfer complexity. The remote-state account (`script/tfstate-bootstrap`) is created in the same region.
+Every sudhaus-engen Azure workload resource is pinned to **West Europe** (`westeurope`). Pinning to a single EU region is a compliance decision: it keeps all data in one EU geography and avoids international-transfer complexity. The remote-state account (`script/tfstate-bootstrap`) is created in the same region.
 
 The pin is **explicit, never defaulted**. The value lives once in `region.tfvars` as `location = "westeurope"`, a committed non-secret data file shared by every root, exactly as `backend.hcl` is shared. Each root declares `variable "location" {}` with **no default** and wires `var.location` into every resource's `location` argument. Every plan or apply passes the shared value explicitly:
 
@@ -64,15 +64,15 @@ Each root declares an empty `backend "azurerm" {}` block and inherits the accoun
 
 ## The prod root
 
-`envs/prod/` is the first concrete workload root. Its state key is `prod.tfstate` and every resource it later owns is named `engen-brews-prod-<resource>`, following the `<project>-<env>-<resource>` convention.
+`envs/prod/` is the first concrete workload root. Its state key is `prod.tfstate` and every resource it later owns is named `sudhaus-engen-prod-<resource>`, following the `<project>-<env>-<resource>` convention.
 
-The root pins the `hashicorp/azurerm` provider with `~> 5.0`. The subscription is an explicit input rather than a committed literal, because this repository is public and Terraform must stay subscription-portable. The `subscription_id` variable has no default and is wired into the provider, so a missing value fails loudly instead of silently targeting the Azure CLI's active subscription; supply it out-of-band, for example `export TF_VAR_subscription_id=<id>` before running `terraform`.
+The root pins the `hashicorp/azurerm` provider with `~> 5.0`. The subscription is an explicit input rather than a literal in any `*.tf` file, because Terraform must stay subscription-portable. The `subscription_id` variable has no default and is wired into the provider, so a missing value fails loudly instead of silently targeting the Azure CLI's active subscription; supply it out-of-band, either through `script/terraform` (which reads it from `.azure/config`) or with `export TF_VAR_subscription_id=<id>` before running `terraform`.
 
-At this bootstrap stage the root declares only its backend, provider, region pin, and the `common_tags` local carrying the required `service = "engen-brews"` and `environment = "production"` tags. It provisions no resources yet. The Container Apps environment, container registry, Log Analytics workspace, DNS zone, and custom-domain resources described in ADR-0001 are added in later changes and will each merge `local.common_tags`.
+At this bootstrap stage the root declares only its backend, provider, region pin, and the `common_tags` local carrying the required `service = "sudhaus-engen"` and `environment = "production"` tags. It provisions no resources yet. The Container Apps environment, container registry, Log Analytics workspace, DNS zone, and custom-domain resources described in ADR-0001 are added in later changes and will each merge `local.common_tags`.
 
 ## Running Terraform for the prod root
 
-`script/terraform` wraps the prod root so operators do not repeat the backend config, state key, region var-file, and subscription wiring by hand. It maps the repo-wide `AZ_SUBSCRIPTION_ID` onto `TF_VAR_subscription_id` (never committed), reuses the repo-local Azure session under `.azure/`, and drives Terraform with `-chdir=terraform/envs/prod`. Sign in first, then init once and plan/apply as usual:
+`script/terraform` wraps the prod root so operators do not repeat the backend config, state key, region var-file, and subscription wiring by hand. It maps the repo-wide `AZ_SUBSCRIPTION_ID` onto `TF_VAR_subscription_id`, reuses the repo-local Azure session under `.azure/`, and drives Terraform with `-chdir=terraform/envs/prod`. Sign in first, then init once and plan/apply as usual:
 
 ```bash
 make az-login
@@ -81,7 +81,7 @@ make plan             # review; writes the plan to terraform/envs/prod/tf.plan
 make apply            # applies the saved tf.plan, so it runs exactly what was reviewed
 ```
 
-`make plan` always saves to `tf.plan` (gitignored via `*.plan`) and `make apply` applies that saved file, so the applied changes are exactly the reviewed plan rather than a fresh, possibly-drifted plan. Each target forwards `ARGS` to Terraform, and `script/terraform {init|plan|apply}` can be called directly when finer control is needed. `AZ_SUBSCRIPTION_ID` is required; the Azure scripts load it from the repo-local, gitignored `.env` when it is not already exported, so an explicit environment value always wins and the scripts fail loudly when it is set in neither place.
+`make plan` always saves to `tf.plan` (gitignored via `*.plan`) and `make apply` applies that saved file, so the applied changes are exactly the reviewed plan rather than a fresh, possibly-drifted plan. Each target forwards `ARGS` to Terraform, and `script/terraform {init|plan|apply}` can be called directly when finer control is needed. `AZ_SUBSCRIPTION_ID` resolves in order from the environment, the repo-local gitignored `.env`, and `defaults.subscription` in the tracked `.azure/config`, so an explicit environment value always wins and the scripts fail loudly when none of the three sets it. To target another subscription, set `AZ_SUBSCRIPTION_ID` or change `defaults.subscription` in `.azure/config`.
 
 ## Initialising a root by hand
 
@@ -93,7 +93,7 @@ terraform init -backend-config=../../backend.hcl -backend-config="key=<env>.tfst
 
 The backend authenticates through Azure AD (`use_azuread_auth = true`); the account has shared key access disabled. State locking is automatic via blob lease and needs no configuration.
 
-Plans and applies pass the shared region value explicitly, so the pinned region is inherited rather than re-declared per root. The subscription id is supplied out-of-band through `TF_VAR_subscription_id` so it never lands in a committed file:
+Plans and applies pass the shared region value explicitly, so the pinned region is inherited rather than re-declared per root. The subscription id is supplied out-of-band through `TF_VAR_subscription_id` so no `*.tf` or `*.tfvars` file holds it:
 
 ```bash
 export TF_VAR_subscription_id=<subscription-id>

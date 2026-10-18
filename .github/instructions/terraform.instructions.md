@@ -4,7 +4,7 @@ applyTo: "**/*.tf,terraform/**"
 
 # Terraform
 
-Engen Brews's Terraform provisions the project's Azure infrastructure. It lives under `terraform/`, targets the `hashicorp/azurerm` provider, and keeps its remote state in a dedicated Azure Storage backend. Read `terraform/README.md` for the full backend, region, and root-layout story; this file is the authoring and review contract that companion `.github/instructions/*.instructions.md` files do not already cover.
+Sudhaus Engen's Terraform provisions the project's Azure infrastructure. It lives under `terraform/`, targets the `hashicorp/azurerm` provider, and keeps its remote state in a dedicated Azure Storage backend. Read `terraform/README.md` for the full backend, region, and root-layout story; this file is the authoring and review contract that companion `.github/instructions/*.instructions.md` files do not already cover.
 
 Terraform runs operator-locally, never in CI. CI does not run `terraform`, and `make review` stays credential-free.
 
@@ -14,12 +14,12 @@ Every Azure resource that supports tags **MUST** carry both of these keys:
 
 ```hcl
 tags = {
-  service     = "engen-brews"
+  service     = "sudhaus-engen"
   environment = "production"
 }
 ```
 
-- `service` is always `"engen-brews"`.
+- `service` is always `"sudhaus-engen"`.
 - `environment` is one of `production`, `staging`, or `lab`, matching the root the resource belongs to.
 
 When a root defines more than a couple of resources, declare the pair once in `locals` and `merge` in any resource-specific tags:
@@ -27,13 +27,13 @@ When a root defines more than a couple of resources, declare the pair once in `l
 ```hcl
 locals {
   common_tags = {
-    service     = "engen-brews"
+    service     = "sudhaus-engen"
     environment = "production"
   }
 }
 
 resource "azurerm_resource_group" "prod" {
-  name     = "engen-brews-prod-rg"
+  name     = "sudhaus-engen-prod-rg"
   location = var.location
 
   tags = merge(local.common_tags, {
@@ -66,25 +66,25 @@ Then implement in Terraform:
 
 ## Naming
 
-Resources follow the `<project>-<env>-<resource>` convention, for example `engen-brews-prod-rg` and `engen-brews-prod-cae`. The project segment is always `engen-brews`.
+Resources follow the `<project>-<env>-<resource>` convention, for example `sudhaus-engen-prod-rg` and `sudhaus-engen-prod-cae`. The project segment is always `sudhaus-engen`.
 
 Where a resource name must be globally unique and alphanumeric-only (Storage accounts, Container Registries), reuse the state account's scheme: a fixed prefix followed by the first six hex characters of `sha256(lower(var.subscription_id))`. The suffix is deterministic and re-derivable, so the name needs no bookkeeping and stays subscription-portable.
 
 ```hcl
 resource "azurerm_container_registry" "prod" {
-  name = "engenbrewsprodacr${substr(sha256(lower(var.subscription_id)), 0, 6)}"
+  name = "sudhausengenprodacr${substr(sha256(lower(var.subscription_id)), 0, 6)}"
   # ...
 }
 ```
 
 ## Project context
 
-This is a service-layer Terraform project for a **public** repository. Two consequences shape every root:
+This is a service-layer Terraform project for a **public** repository. Two rules shape every root:
 
-1. **Subscription-portable.** The subscription id is an explicit input (`variable "subscription_id"`, no default), supplied out-of-band via `TF_VAR_subscription_id` and never committed. A missing value must fail loudly rather than silently target the Azure CLI's active subscription.
+1. **Subscription-portable.** The subscription id is an explicit input (`variable "subscription_id"`, no default), supplied through `TF_VAR_subscription_id` and never written as a literal in a `*.tf` or `*.tfvars` file. `script/terraform` reads it from `AZ_SUBSCRIPTION_ID`, `.env`, or `defaults.subscription` in the tracked `.azure/config`. The id is an identifier, not a credential, so it may be public. A missing value must fail loudly rather than silently target the Azure CLI's active subscription.
 2. **Region-pinned.** Every workload resource is pinned to West Europe (`westeurope`). The value lives once in the shared, committed `region.tfvars`; each root declares `variable "location"` with **no default** and passes `-var-file=../../region.tfvars` on every plan and apply, so a forgotten region fails loudly.
 
-Remote state lives in a dedicated azurerm Storage backend (`engen-brews-tfstate-rg` / `engenbrewstfstate<suffix>` / container `tfstate`, blob key `<env>.tfstate`), provisioned by `script/tfstate-bootstrap` and **never** managed by Terraform. Subscription-scoped resource-provider registration is likewise handled out-of-band by `script/register-providers`. Keeping both out of every `*.tf` file guarantees a `terraform destroy` cannot delete the state account or deregister providers, and keeps `make review` credential-free.
+Remote state lives in a dedicated azurerm Storage backend (`sudhaus-engen-tfstate-rg` / `sudhausengentf<suffix>` / container `tfstate`, blob key `<env>.tfstate`), provisioned by `script/tfstate-bootstrap` and **never** managed by Terraform. Subscription-scoped resource-provider registration is likewise handled out-of-band by `script/register-providers`. Keeping both out of every `*.tf` file guarantees a `terraform destroy` cannot delete the state account or deregister providers, and keeps `make review` credential-free.
 
 ## File structure
 

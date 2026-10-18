@@ -36,8 +36,8 @@ Extra arguments are forwarded to Terraform, e.g.
 
 ENVIRONMENT:
   AZ_SUBSCRIPTION_ID  Subscription ID, exported to Terraform as
-                       TF_VAR_subscription_id (required; set in .env or the
-                       environment).
+                       TF_VAR_subscription_id. The environment overrides .env,
+                       which overrides defaults.subscription in .azure/config.
 EOF
 }
 
@@ -98,6 +98,26 @@ load_dotenv() {
   done < "${PROJECT_DIR}/.env"
 }
 
+load_azure_config_default() {
+  [[ -n "${AZ_SUBSCRIPTION_ID:-}" ]] && return 0
+
+  local config="${PROJECT_DIR}/.azure/config"
+  [[ -f "${config}" ]] || return 0
+
+  local line section="" value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      \[*\]) section="${line}" ;;
+      subscription*=*)
+        [[ "${section}" == "[defaults]" ]] || continue
+        value="${line#*=}"
+        value="${value//[[:space:]\"\']/}"
+        [[ -n "${value}" ]] && export AZ_SUBSCRIPTION_ID="${value}"
+        ;;
+    esac
+  done < "${config}"
+}
+
 main() {
   local subcommand="${1:-}"
 
@@ -114,7 +134,8 @@ main() {
   require_terraform
 
   load_dotenv
-  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) before running}"
+  load_azure_config_default
+  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) or defaults.subscription in .azure/config}"
 
   export AZURE_CONFIG_DIR="${PROJECT_DIR}/.azure"
   require_session

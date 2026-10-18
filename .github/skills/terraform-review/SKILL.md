@@ -24,7 +24,7 @@ The checker enforces the parts of `.github/instructions/terraform.instructions.m
 - The `terraform {}` block and provider blocks live in `terraform.tf` (checked positively, so a misplaced block in any other file is caught).
 - Every `variable` block has a `description`.
 - `variable "location"` and `variable "subscription_id"` declare no `default`.
-- Every taggable resource carries the required tags: heuristically, any `azurerm_*` resource that sets a `location` must declare `tags`, and every `tags` block must include `service = "engen-brews"` and an `environment` whose value is one of `production`, `staging`, or `lab`, matching the root (derived from its path). A `tags` value that references `common_tags` is accepted when a `locals` block defines `common_tags` with `service = "engen-brews"` and a valid `environment`.
+- Every taggable resource carries the required tags: heuristically, any `azurerm_*` resource that sets a `location` must declare `tags`, and every `tags` block must include `service = "sudhaus-engen"` and an `environment` whose value is one of `production`, `staging`, or `lab`, matching the root (derived from its path). A `tags` value that references `common_tags` is accepted when a `locals` block defines `common_tags` with `service = "sudhaus-engen"` and a valid `environment`.
 
 The tag, block-placement, and variable checks are line-oriented heuristics tuned to this repo's simple, one-resource-per-block style, not a full HCL parser. Treat findings as a fast first pass, not a substitute for `make plan` and human review.
 

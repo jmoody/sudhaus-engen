@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # script/tfstate-bootstrap provisions the Azure resources that hold Terraform
-# remote state for engen-brews: a dedicated resource group, an RBAC-only storage
+# remote state for sudhaus-engen: a dedicated resource group, an RBAC-only storage
 # account, and a blob container. These resources are deliberately never managed
 # by Terraform so that a workload stack's terraform destroy can never delete the
 # account holding its own state. The script is idempotent: re-running it against
@@ -13,7 +13,7 @@ set -euo pipefail
 PROJECT_DIR="$(git rev-parse --show-toplevel)"
 readonly PROJECT_DIR
 
-readonly RESOURCE_GROUP="engen-brews-tfstate-rg"
+readonly RESOURCE_GROUP="sudhaus-engen-tfstate-rg"
 readonly LOCATION="westeurope"
 readonly CONTAINER="tfstate"
 readonly ROLE="Storage Blob Data Contributor"
@@ -31,8 +31,9 @@ OPTIONS:
   -h, --help                  Show this help message
 
 ENVIRONMENT:
-  AZ_SUBSCRIPTION_ID          Subscription ID (required; set in .env or the
-                               environment)
+  AZ_SUBSCRIPTION_ID          Subscription ID. The environment overrides .env,
+                               which overrides defaults.subscription in
+                               .azure/config.
 
 EOF
 }
@@ -80,7 +81,7 @@ derive_account_name() {
   local subscription_lower suffix
   subscription_lower="$(printf '%s' "${AZ_SUBSCRIPTION_ID}" | tr '[:upper:]' '[:lower:]')"
   suffix="$(sha256_hex "${subscription_lower}" | cut -c1-6)"
-  STORAGE_ACCOUNT="engenbrewstfstate${suffix}"
+  STORAGE_ACCOUNT="sudhausengentf${suffix}"
   readonly STORAGE_ACCOUNT
   if [[ ! "${STORAGE_ACCOUNT}" =~ ^[a-z0-9]{3,24}$ ]]; then
     log_error "Derived storage account name '${STORAGE_ACCOUNT}' is invalid."
@@ -94,7 +95,7 @@ ensure_resource_group() {
     --subscription "${AZ_SUBSCRIPTION_ID}" \
     --name "${RESOURCE_GROUP}" \
     --location "${LOCATION}" \
-    --tags project=engen-brews purpose=terraform-state created_by=script \
+    --tags project=sudhaus-engen purpose=terraform-state created_by=script \
     --only-show-errors \
     --output none
 }
@@ -113,7 +114,7 @@ ensure_storage_account() {
     --allow-blob-public-access false \
     --allow-shared-key-access false \
     --public-network-access Enabled \
-    --tags project=engen-brews purpose=terraform-state created_by=script \
+    --tags project=sudhaus-engen purpose=terraform-state created_by=script \
     --only-show-errors \
     --output none
 
@@ -238,6 +239,26 @@ load_dotenv() {
   done < "${PROJECT_DIR}/.env"
 }
 
+load_azure_config_default() {
+  [[ -n "${AZ_SUBSCRIPTION_ID:-}" ]] && return 0
+
+  local config="${PROJECT_DIR}/.azure/config"
+  [[ -f "${config}" ]] || return 0
+
+  local line section="" value
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    case "${line}" in
+      \[*\]) section="${line}" ;;
+      subscription*=*)
+        [[ "${section}" == "[defaults]" ]] || continue
+        value="${line#*=}"
+        value="${value//[[:space:]\"\']/}"
+        [[ -n "${value}" ]] && export AZ_SUBSCRIPTION_ID="${value}"
+        ;;
+    esac
+  done < "${config}"
+}
+
 main() {
   while getopts "h-:" opt; do
     case $opt in
@@ -251,7 +272,8 @@ main() {
   done
 
   load_dotenv
-  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) before running}"
+  load_azure_config_default
+  AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:?set AZ_SUBSCRIPTION_ID (e.g. in .env) or defaults.subscription in .azure/config}"
 
   require_az
 

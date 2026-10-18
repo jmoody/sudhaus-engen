@@ -2,7 +2,7 @@
 
 ## What this repo is
 
-Engen Brews (Engen Braut) is a single-developer brewing-calendar website for a German audience. It renders brew-day events plus the legally required German pages (Impressum and Datenschutzerklarung) and sets no cookies. The service is implemented in Go and ships as a Docker container. It is hosted on an Azure Virtual Machine in West Europe, provisioned and maintained with Terraform. See `docs/adrs/` for the accepted hosting and deploy-topology decision.
+Sudhaus Engen (sudhaus-engen.de) is a single-developer brewing-calendar website for a German audience. It renders brew-day events plus the legally required German pages (Impressum and Datenschutzerklarung) and sets no cookies. The service is implemented in Go and ships as a Docker container. It is hosted on an Azure Virtual Machine in West Europe, provisioned and maintained with Terraform. See `docs/adrs/` for the accepted hosting and deploy-topology decision.
 
 ## Companion instructions
 
@@ -45,6 +45,10 @@ When a coding agent opens a pull request by any means (`gh pr create`, the GitHu
 ## Scripting
 
 Bash is the scripting language for this repo. Shell scripts live under `script/` and follow `.github/instructions/bash.instructions.md`.
+
+## Azure sign-in
+
+`make az-login` stores the Azure session under the repo-local `.azure/`. The user-level `azure` MCP server in `~/.copilot/mcp-config.json` runs `git rev-parse --show-toplevel` and sets `AZURE_CONFIG_DIR` to `<repo>/.azure` when that directory exists, so Copilot needs no exported variable. Outside a repo with `.azure/`, the server uses `~/.azure`. Restart Copilot (`/restart`) after changing the config. Plain `az` commands run by an agent do not inherit the variable, so prefix them with `AZURE_CONFIG_DIR="$(git rev-parse --show-toplevel)/.azure"`.
 
 ## Operational helpers are bash + `go run`
 

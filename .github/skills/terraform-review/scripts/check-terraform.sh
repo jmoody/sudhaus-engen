@@ -6,7 +6,7 @@ usage() {
   cat << EOF
 Usage: $0 [OPTIONS] [ROOT...]
 
-Statically review Engen Brews's Terraform against the contract in
+Statically review Sudhaus Engen's Terraform against the contract in
 .github/instructions/terraform.instructions.md. Runs credential-free: it never
 calls Azure, never runs terraform plan/apply, and needs no backend access.
 
@@ -23,7 +23,7 @@ Checks performed per root:
   - Every variable block has a description.
   - variable "location" has no default.
   - Every taggable resource (heuristically, any azurerm_* resource that sets a
-    location) declares tags, and every tags block carries service = "engen-brews" and an
+    location) declares tags, and every tags block carries service = "sudhaus-engen" and an
     environment key (a tags value that references common_tags is accepted when a
     locals block defines common_tags with both keys).
 
@@ -128,7 +128,7 @@ common_tags_ok() {
     echo 0
     return 0
   fi
-  if ! grep -qE 'service[[:space:]]*=[[:space:]]*"engen-brews"' <<< "${block}"; then
+  if ! grep -qE 'service[[:space:]]*=[[:space:]]*"sudhaus-engen"' <<< "${block}"; then
     echo 0
     return 0
   fi
@@ -203,11 +203,11 @@ check_blocks() {
           }
           if (body ~ /common_tags/) {
             if (common_ok != "1")
-              print file ": " rtype " uses common_tags but its locals block lacks service = \"engen-brews\" or a valid environment"
+              print file ": " rtype " uses common_tags but its locals block lacks service = \"sudhaus-engen\" or a valid environment"
             return
           }
-          if (body !~ /service[[:space:]]*=[[:space:]]*"engen-brews"/)
-            print file ": " rtype " tags must include service = \"engen-brews\""
+          if (body !~ /service[[:space:]]*=[[:space:]]*"sudhaus-engen"/)
+            print file ": " rtype " tags must include service = \"sudhaus-engen\""
           ev = env_value(body)
           if (ev == "")
             print file ": " rtype " tags must include an environment key"

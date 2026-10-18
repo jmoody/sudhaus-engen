@@ -11,7 +11,7 @@ The workflow is described in .github/ace-fca/README.md
 
 ## Tool policy
 
-ACE-FCA is a **development-mode** agent for Go service development: it modifies Engen Brews source.
+ACE-FCA is a **development-mode** agent for Go service development: it modifies Sudhaus Engen source.
 
 This agent declares no `tools:` allowlist, because the workflow runs in both Copilot CLI and VS Code and the two hosts name tools differently. The rules below are therefore binding prose. Follow them as strictly as a hard allowlist.
 
@@ -20,8 +20,8 @@ This agent declares no `tools:` allowlist, because the workflow runs in both Cop
 - **Jupyter notebook tools.** There are no notebooks here, and the repo forbids invoking `python` / `python3`.
 - **Browser and Playwright tools.** This workflow modifies Go source; it does not drive a browser.
 - **Workspace scaffolding and extension management** (`newWorkspace`, `installExtension`). This is an existing repository.
-- **Unrelated infrastructure MCP servers**: datadog, kubernetes, sentry, slack, splunk. None back Engen Brews's stack.
-- **The azure and terraform MCP servers.** Engen Brews provisions Azure via Terraform, but that work is driven through the `Makefile` and the `az` / `script/terraform` CLIs, not these interactive MCP servers. Follow `.github/instructions/terraform.instructions.md`.
+- **Unrelated infrastructure MCP servers**: datadog, kubernetes, sentry, slack, splunk. None back Sudhaus Engen's stack.
+- **The azure and terraform MCP servers.** Sudhaus Engen provisions Azure via Terraform, but that work is driven through the `Makefile` and the `az` / `script/terraform` CLIs, not these interactive MCP servers. Follow `.github/instructions/terraform.instructions.md`.
 - **The `rename_branch` tool, in a worktree session.** Renaming the branch of a live worktree session deletes the worktree directory without recreating it at a new path. Every shell in the session then spawns into a dead path and fails with `No such file or directory`, leaving the session unable to run anything or even diagnose itself; the only recovery is handing the task to a fresh session. A branch name is cosmetic and the PR title carries the semantic information, so do not rename a branch during an ACE-FCA cycle, and do not instruct a delegated session to rename its own.
 
 ### GitHub

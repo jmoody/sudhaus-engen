@@ -1,5 +1,4 @@
-## Engen Braut / Engen Brews
+## Sudhaus Engen
 
-Schedules and recipes for Engen Brews.
-
+Schedules and recipes for Sudhaus Engen.
 

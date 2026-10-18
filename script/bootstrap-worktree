@@ -28,7 +28,7 @@ usage() {
   cat << EOF
 Usage: $0 [OPTIONS] <branch-name> [base-ref]
 
-Create and provision a development git worktree for engen-brews. The worktree is
+Create and provision a development git worktree for sudhaus-engen. The worktree is
 created at <parent-of-source>/<repo-basename>-worktrees/<branch-name> on a new
 branch <branch-name>, provisioned with the gitignored operational state that
 does not travel with a checkout (.env and the Azure CLI login session), then

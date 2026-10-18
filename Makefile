@@ -1,4 +1,4 @@
-# Makefile for engen-brews.
+# Makefile for sudhaus-engen.
 #
 # This currently covers the Azure/Terraform workflow and a credential-free
 # review gate. Build/test targets for the web service are added when its source

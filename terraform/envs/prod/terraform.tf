@@ -15,10 +15,9 @@ terraform {
 }
 
 # The subscription is an explicit input via var.subscription_id (no default),
-# never hardcoded: this repository is public and Terraform must be
-# subscription-portable. Setting it here rather than relying on the provider's
-# fallback means a missing value fails loudly instead of silently targeting the
-# Azure CLI's active subscription.
+# never hardcoded, so Terraform stays subscription-portable. Setting it here
+# rather than relying on the provider's fallback means a missing value fails
+# loudly instead of silently targeting the Azure CLI's active subscription.
 provider "azurerm" {
   features {}
 
