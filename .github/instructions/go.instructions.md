@@ -241,12 +241,9 @@ This approach:
 
 ## HTTP handler design
 
-This project uses `go-chi/chi/v5` for routing. Routes are registered in `internal/api/rest/routes.go`.
-
-- Use `chi.Router.Route(pattern, fn)` for nested route groups
-- Use `r.Handle(path, http.HandlerFunc(fn))` for leaf routes
-- Use `r.Use(middleware)` to apply middleware to a route group
-- Extract path parameters with `r.PathValue("name")` (Go 1.22+ stdlib, compatible with chi v5)
+- Use the `net/http` `ServeMux`; do not add a router dependency
+- Register method-and-path patterns such as `GET /{$}` for an exact root route
+- Use `r.PathValue("name")` to read path parameters from wildcard patterns
 - Handlers are standard `func(w http.ResponseWriter, r *http.Request)` signatures
 - Use middleware as `func(http.Handler) http.Handler` for cross-cutting concerns (auth, environment gating)
 - Return appropriate HTTP status codes; use `http.Error` for error responses

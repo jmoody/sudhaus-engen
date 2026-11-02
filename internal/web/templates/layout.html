@@ -1,0 +1,24 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/static/css/site.css">
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <p class="site-name">Sudhaus Engen</p>
+      </header>
+      <main class="site-main">
+        {{template "content" .}}
+      </main>
+      <footer class="site-footer">
+        <p>Sudhaus Engen</p>
+      </footer>
+    </div>
+  </body>
+</html>
+{{end}}
