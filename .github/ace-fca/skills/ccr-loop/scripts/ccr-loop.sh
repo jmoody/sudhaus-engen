@@ -92,11 +92,17 @@ latest_review_body() {
   local repo="$1"
   local pr="$2"
   local id
-  id="$(latest_review_id "${repo}" "${pr}")"
+  if ! id="$(latest_review_id "${repo}" "${pr}")"; then
+    log_error "Could not list CCR reviews for ${repo}#${pr}."
+    return 1
+  fi
   if [[ -z "${id}" ]]; then
     return 0
   fi
-  gh api "repos/${repo}/pulls/${pr}/reviews/${id}" --jq '.body // ""'
+  if ! gh api "repos/${repo}/pulls/${pr}/reviews/${id}" --jq '.body // ""'; then
+    log_error "Could not read CCR review ${id} on ${repo}#${pr}."
+    return 1
+  fi
 }
 
 # CCR reports findings against code that has not changed since the last review inside a
@@ -106,7 +112,9 @@ overview_findings() {
   local repo="$1"
   local pr="$2"
   local body
-  body="$(latest_review_body "${repo}" "${pr}")"
+  if ! body="$(latest_review_body "${repo}" "${pr}")"; then
+    return 1
+  fi
   if [[ -z "${body}" ]]; then
     return 0
   fi
@@ -116,7 +124,7 @@ overview_findings() {
     capture { print }
   ' <<< "${body}" \
     | sed -e 's|<picture>.*alt="\([A-Za-z]*\) severity".*</picture>|\1:|g' -e 's/<[^>]*>//g' \
-    | grep -v '^[[:space:]]*$' || true
+    | awk 'NF'
 }
 
 ccr_threads() {
@@ -271,8 +279,14 @@ cmd_wait() {
       log_info "New CCR review submitted at ${latest}."
       local threads
       local findings
-      threads="$(unresolved_threads "${repo}" "${pr}")"
-      findings="$(overview_findings "${repo}" "${pr}")"
+      if ! threads="$(unresolved_threads "${repo}" "${pr}")"; then
+        log_error "Could not list review threads; cannot confirm the loop is clean."
+        return 1
+      fi
+      if ! findings="$(overview_findings "${repo}" "${pr}")"; then
+        log_error "Could not read the latest review body; cannot confirm the loop is clean."
+        return 1
+      fi
       if [[ -n "${threads}" ]]; then
         log_info "Unresolved CCR threads:"
         echo "${threads}"
