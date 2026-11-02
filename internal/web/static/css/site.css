@@ -110,9 +110,11 @@ address {
   max-width: 100%;
   border-collapse: collapse;
   text-align: left;
+  /* The date parts below are fixed-width, so the row cannot reflow. Shrink the type on a
+     narrow viewport instead, which keeps the whole grid on a 320px screen. */
+  font-size: clamp(0.8rem, 3.2vw, 1.125rem);
 }
 
-/* The date cell is left free to wrap: the longest German date is wider than a 320px viewport. */
 .brew-days th,
 .brew-days td {
   padding: 0.4rem clamp(1rem, 5vw, 2.5rem) 0.4rem 0;
@@ -127,6 +129,29 @@ address {
 .brew-days th:last-child,
 .brew-days td:last-child {
   padding-right: 0;
+}
+
+/* The site font is monospaced, so ch units lay every date part on the character grid.
+   The widths fit the longest German weekday (Donnerstag) and month (September), and each
+   padding is the gap to the column that follows. */
+.brew-days time > span {
+  display: inline-block;
+  text-align: right;
+}
+
+.brew-days .day-name {
+  width: 12ch;
+  padding-right: 2ch;
+}
+
+.brew-days .day-num {
+  width: 4ch;
+  padding-right: 1ch;
+}
+
+.brew-days .month {
+  width: 10ch;
+  padding-right: 1ch;
 }
 
 .site-footer {

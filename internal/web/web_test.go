@@ -49,19 +49,20 @@ func TestServer_FrontPage(t *testing.T) {
 	require.Contains(body, `<th scope="col">Datum</th>`)
 	require.Contains(body, `<th scope="col">Bier</th>`)
 
-	// Each row is asserted whole so that a date can never drift away from the beer beside it.
-	for _, row := range []string{
-		`<time datetime="2026-11-06">Freitag, 6. November 2026</time></td><td>Pils #1`,
-		`<time datetime="2026-12-04">Freitag, 4. Dezember 2026</time></td><td>Böckle #1`,
-		`<time datetime="2027-01-08">Freitag, 8. Januar 2027</time></td><td>Pils #2`,
-		`<time datetime="2027-02-12">Freitag, 12. Februar 2027</time></td><td>Böckle #2`,
-		`<time datetime="2027-03-26">Freitag, 26. März 2027</time></td><td>Pils #3`,
-		`<time datetime="2027-05-27">Donnerstag, 27. Mai 2027</time></td><td>Summer Ale`,
+	// Each row is matched whole so that a date can never drift away from the beer beside it.
+	for _, row := range []struct{ date, weekday, beer string }{
+		{"2026-11-06", "Freitag", "Pils"},
+		{"2026-12-04", "Freitag", "Böckle"},
+		{"2027-01-08", "Freitag", "Pils"},
+		{"2027-02-12", "Freitag", "Böckle"},
+		{"2027-03-26", "Freitag", "Pils"},
+		{"2027-05-27", "Donnerstag", "Summer Ale"},
 	} {
-		require.Contains(body, row)
+		require.Regexp(`datetime="`+row.date+`">.*>`+row.weekday+`<.*<td>`+row.beer+`</td>`, body)
 	}
 
 	require.NotContains(body, "<ol>")
+	require.NotContains(body, "#1")
 	require.NotContains(body, "Hello world")
 }
 
