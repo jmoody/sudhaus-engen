@@ -350,7 +350,7 @@ Rollback: close the ten issues as "not planned". The plan changes nothing else.
 - https://sudhaus-engen.de returns 200 with a valid certificate.
 - `http://sudhaus-engen.de` redirects to HTTPS.
 - A `make plan` after `make apply` shows no changes.
-- All "Done when" items of the batch are true.
+- All "Done when" items of the batch that describe the live site are true. Task closure is not one of them.
 
 **Blocked by**: T4, T6, T7.
 
