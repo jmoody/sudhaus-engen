@@ -40,17 +40,29 @@ func TestServer_FrontPage(t *testing.T) {
 
 	require.Equal(http.StatusOK, rec.Code)
 	require.Equal("text/html; charset=utf-8", rec.Header().Get("Content-Type"))
-	require.Contains(rec.Body.String(), `<html lang="de">`)
-	require.Contains(rec.Body.String(), `<link rel="stylesheet" href="/static/css/site.css">`)
-	require.Contains(rec.Body.String(), "<h1>Brauplan 2027</h1>")
-	require.Contains(rec.Body.String(), "Beginn ist immer um 9:30 Uhr; Ende meist gegen 19:00 Uhr.")
-	require.Contains(rec.Body.String(), `<time datetime="2026-11-06">Freitag, 6. November 2026</time>`)
-	require.Contains(rec.Body.String(), `<time datetime="2026-12-04">Freitag, 4. Dezember 2026</time>`)
-	require.Contains(rec.Body.String(), `<time datetime="2027-01-08">Freitag, 8. Januar 2027</time>`)
-	require.Contains(rec.Body.String(), `<time datetime="2027-02-12">Freitag, 12. Februar 2027</time>`)
-	require.Contains(rec.Body.String(), `<time datetime="2027-03-26">Freitag, 26. März 2027</time>`)
-	require.Contains(rec.Body.String(), `<time datetime="2027-05-27">Donnerstag, 27. Mai 2027</time>`)
-	require.NotContains(rec.Body.String(), "Hello world")
+	body := rec.Body.String()
+
+	require.Contains(body, `<html lang="de">`)
+	require.Contains(body, `<link rel="stylesheet" href="/static/css/site.css">`)
+	require.Contains(body, "<h1>Brauplan 2027</h1>")
+	require.Contains(body, "Beginn ist immer um 9:30 Uhr; Ende meist gegen 19:00 Uhr.")
+	require.Contains(body, `<th scope="col">Datum</th>`)
+	require.Contains(body, `<th scope="col">Bier</th>`)
+
+	// Each row is asserted whole so that a date can never drift away from the beer beside it.
+	for _, row := range []string{
+		`<time datetime="2026-11-06">Freitag, 6. November 2026</time></td><td>Pils #1`,
+		`<time datetime="2026-12-04">Freitag, 4. Dezember 2026</time></td><td>Böckle #1`,
+		`<time datetime="2027-01-08">Freitag, 8. Januar 2027</time></td><td>Pils #2`,
+		`<time datetime="2027-02-12">Freitag, 12. Februar 2027</time></td><td>Böckle #2`,
+		`<time datetime="2027-03-26">Freitag, 26. März 2027</time></td><td>Pils #3`,
+		`<time datetime="2027-05-27">Donnerstag, 27. Mai 2027</time></td><td>Summer Ale`,
+	} {
+		require.Contains(body, row)
+	}
+
+	require.NotContains(body, "<ol>")
+	require.NotContains(body, "Hello world")
 }
 
 func TestServer_Impressum(t *testing.T) {

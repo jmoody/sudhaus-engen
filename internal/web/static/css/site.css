@@ -105,6 +105,30 @@ address {
   color: #78401f;
 }
 
+.brew-days {
+  margin: 2rem 0 0;
+  max-width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+/* The date cell is left free to wrap: the longest German date is wider than a 320px viewport. */
+.brew-days th,
+.brew-days td {
+  padding: 0.4rem clamp(1rem, 5vw, 2.5rem) 0.4rem 0;
+  vertical-align: baseline;
+}
+
+.brew-days th {
+  border-bottom: 0.125rem solid #a95f32;
+  color: #78401f;
+}
+
+.brew-days th:last-child,
+.brew-days td:last-child {
+  padding-right: 0;
+}
+
 .site-footer {
   display: flex;
   flex-wrap: wrap;
@@ -146,6 +170,10 @@ address {
   }
 
   .site-main a {
+    color: #e6a674;
+  }
+
+  .brew-days th {
     color: #e6a674;
   }
 
