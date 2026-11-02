@@ -8,7 +8,7 @@ license: MIT
 
 Drive a pull request to a clean Copilot Code Review. CCR is not a single pass: each review can raise comments, and fixing them can surface new ones. The loop is **request -> wait -> address -> resolve -> re-request**, repeated until a review comes back with no actionable comments. A clean pass with zero new comments is the only exit condition.
 
-This skill encodes the mechanical GitHub steps (requesting the review, confirming it on the timeline, waiting for the next review to land, listing unresolved threads, capturing every thread for the retrospective, replying, and resolving) in `scripts/ccr-loop.sh`. The judgment steps (actually fixing or answering each comment) stay with the agent.
+This skill encodes the mechanical GitHub steps (requesting the review, confirming it on the timeline, waiting for the next review to land, listing unresolved threads, surfacing findings the review reports only in its body, capturing every thread for the retrospective, replying, and resolving) in `scripts/ccr-loop.sh`. The judgment steps (actually fixing or answering each comment) stay with the agent.
 
 The canonical location of this skill is `.github/ace-fca/skills/ccr-loop`; it is an ACE-FCA workflow artifact surfaced under `.github/skills/ccr-loop` via a directory symlink so the skills loader discovers it. Edit the files under `.github/ace-fca/skills/ccr-loop`.
 
@@ -33,7 +33,7 @@ Run these steps from the repository, substituting the PR number for `<pr>`.
    .github/skills/ccr-loop/scripts/ccr-loop.sh review <pr>
    ```
 
-   It captures the current latest CCR review time, requests CCR, confirms the `review_requested` timeline event naming `Copilot`, then blocks until a strictly newer review lands and prints each unresolved CCR thread as a JSON line: `{id, path, line, body}`. Accepts `--timeout <seconds>` (default 900) and `--interval <seconds>` (default 30). If there are no unresolved threads, it reports the loop is complete.
+   It captures the current latest CCR review time, requests CCR, confirms the `review_requested` timeline event naming `Copilot`, then blocks until a strictly newer review lands. It prints each unresolved CCR thread as a JSON line: `{id, path, line, body}`, and separately prints any findings the review reports only in its body. Accepts `--timeout <seconds>` (default 900) and `--interval <seconds>` (default 30). It reports the loop complete only when both are empty.
 
    To drive the steps by hand instead, capture the baseline **before** requesting, then wait against it, so a review that lands between the two calls is not adopted as the baseline and ignored:
 
@@ -52,18 +52,19 @@ Run these steps from the repository, substituting the PR number for `<pr>`.
    .github/skills/ccr-loop/scripts/ccr-loop.sh resolve <thread-id>
    ```
 
-4. **Re-run `review`** and repeat from step 1. Continue until it reports no unresolved threads.
+4. **Re-run `review`** and repeat from step 1. Continue until it reports no unresolved threads and no overview findings.
 
 ## Helper commands
 
 ```text
 ccr-loop.sh review <pr> [--timeout N] [--interval N]
-                                         Capture baseline, request CCR, wait for the next review, list threads.
+                                         Capture baseline, request CCR, wait for the next review, list threads and overview findings.
 ccr-loop.sh request <pr>                 Request CCR and verify the timeline event.
 ccr-loop.sh latest <pr>                  Print the submitted_at of the latest CCR review.
 ccr-loop.sh wait <pr> [--since TS] [--timeout N] [--interval N]
-                                         Block until a newer CCR review lands, then list unresolved threads.
+                                         Block until a newer CCR review lands, then list unresolved threads and overview findings.
 ccr-loop.sh threads <pr>                 List unresolved CCR review threads without waiting.
+ccr-loop.sh overview <pr>                List findings the latest review reports only in its body.
 ccr-loop.sh capture <pr>                 List all CCR review threads (resolved and unresolved) for retrospective capture.
 ccr-loop.sh reply <thread-id> <message>  Reply to a review thread.
 ccr-loop.sh resolve <thread-id>          Resolve a review thread.
@@ -75,3 +76,4 @@ ccr-loop.sh resolve <thread-id>          Resolve a review thread.
 - The reviews endpoint lists only submitted reviews, so an empty list can mean a review is still in progress. `wait` polls until a new one is submitted.
 - CCR is matched by the bot login (`copilot-pull-request-reviewer[bot]` in REST, `copilot-pull-request-reviewer` in GraphQL); human review threads are ignored by `wait` and `threads`.
 - `threads` paginates every review thread, so it never hides a finding past the first page.
+- Unresolved threads are not the whole review. CCR reports findings against code that has not changed since the last review in a collapsed "previously missed issues" block in the review body, and those never become threads. A thread-only check therefore reports a clean loop while they are still outstanding, which is why `wait` also requires `overview` to be empty before calling the loop complete.

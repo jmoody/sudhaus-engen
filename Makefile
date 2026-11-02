@@ -71,7 +71,7 @@ terraform-lint:
 	script/terraform-lint
 
 shellcheck:
-	@find script .github/skills .github/workflows/scripts -type f -exec sh -c 'for f in "$$@"; do if head -1 "$$f" | grep -qE "^#!.*bash"; then echo "shellcheck $$f"; shellcheck "$$f" || exit 1; fi; done' sh {} +
+	@find script .github/skills .github/ace-fca/skills .github/workflows/scripts -type f -exec sh -c 'for f in "$$@"; do if head -1 "$$f" | grep -qE "^#!.*bash"; then echo "shellcheck $$f"; shellcheck "$$f" || exit 1; fi; done' sh {} +
 
 lint: build
 	bin/golangci-lint run --max-issues-per-linter=0 --max-same-issues=0 ./...
