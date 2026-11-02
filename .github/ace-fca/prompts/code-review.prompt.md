@@ -54,6 +54,7 @@ This check list accretes over time: each cycle, the retrospective adds a general
 - Input-scope fidelity: verify the implementation reads exactly the input the binding rule names, no more (a CCR round once caught a title-scoped signal scanning the entire issue body).
 - Fail-safe gates on incomplete data: a gating or decision script must never emit its permissive verdict when a data fetch was capped or truncated; propagate the truncation as the conservative verdict instead (a CCR round once caught a fetch-cap path still printing `eligible`).
 - Ordered-document integrity: when a numbered step or section is inserted, confirm the subsequent items are renumbered so the sequence stays monotonic.
+- Self-referential completion criteria: a "Done when" or exit criterion must not depend on the closure of the item that owns it, or on a parent whose completion requires that item to be closed (a CCR round once caught a task that required every criterion of its batch, and the batch required the task to be closed).
 
 ## Security checks (Go-specific)
 

@@ -66,6 +66,7 @@ Review each modified file for:
 - Example `.env` files match what tests actually expect
 - Hardcoded constants (URLs, env var names) match actual environment values
 - Cross-file consistency: ports, URLs, or service names hardcoded in docker-compose files match what scripts and env vars reference
+- Local-versus-CI parity: every tool that a bootstrap script requires is installed by each workflow job that runs the script. A local `make review` pass cannot show this, because the local machine already has the tools (a red CI run once showed `terraform` missing on the runners)
 
 ### 8. Adversarial thinking
 
@@ -100,6 +101,10 @@ Present findings ONE AT A TIME. After each finding, STOP and WAIT for human resp
 
 Fix now? (yes/no/defer)
 ```
+
+## Pull request checks
+
+When the pull request exists, wait for its CI result before any review request, including Copilot Code Review: `gh pr checks <pr> --watch`. A snapshot taken right after a push shows pending checks and exits with code 8, so do not rely on one. Request review only when every check has finished and passed. A failing, pending, or unavailable result blocks the request. Fix a failing check first. Read the log of a failed run with `gh run view <run-id> --log-failed`. Wait for the checks again after every push. A local `make review` pass does not replace this step.
 
 ## Retrospective integration
 
