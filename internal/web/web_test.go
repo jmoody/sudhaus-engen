@@ -49,6 +49,39 @@ func TestServer_FrontPage(t *testing.T) {
 	require.NotContains(rec.Body.String(), "Hello world")
 }
 
+func TestServer_Impressum(t *testing.T) {
+	require := require.New(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/impressum", nil)
+
+	newHandler(t).ServeHTTP(rec, req)
+
+	require.Equal(http.StatusOK, rec.Code)
+	require.Equal("text/html; charset=utf-8", rec.Header().Get("Content-Type"))
+	require.Contains(rec.Body.String(), "<title>Impressum - Sudhaus Engen</title>")
+	require.Contains(rec.Body.String(), "<h1>Impressum</h1>")
+	require.Contains(rec.Body.String(), "Angaben gemäß § 18 Abs. 1 MStV")
+	require.Contains(rec.Body.String(), "Joshua Moody")
+	require.Contains(rec.Body.String(), "Lupfenstraße 1")
+	require.Contains(rec.Body.String(), "78234 Engen")
+	require.Contains(rec.Body.String(), `<a href="mailto:joshua.moody.de@gmail.com">joshua.moody.de@gmail.com</a>`)
+}
+
+func TestServer_FooterImpressumLink(t *testing.T) {
+	for _, path := range []string{"/", "/impressum"} {
+		t.Run(path, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+
+			newHandler(t).ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			require.Contains(t, rec.Body.String(), `<a href="/impressum">Impressum</a>`)
+		})
+	}
+}
+
 func TestServer_StaticFiles(t *testing.T) {
 	tests := []struct {
 		name        string

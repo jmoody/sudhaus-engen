@@ -18,7 +18,7 @@ var templateFS embed.FS
 //go:embed static
 var staticFS embed.FS
 
-type indexData struct {
+type pageData struct {
 	Title   string
 	Heading string
 }
@@ -40,22 +40,34 @@ func NewServer(logger *slog.Logger) (*Server, error) {
 	}
 
 	pages := make(map[string]*template.Template)
-	index, err := layout.Clone()
-	if err != nil {
-		return nil, fmt.Errorf("cloning layout template for index: %w", err)
+	for _, name := range []string{"index", "impressum"} {
+		page, pageErr := parsePage(layout, name)
+		if pageErr != nil {
+			return nil, pageErr
+		}
+		pages[name] = page
 	}
-	if _, err = index.ParseFS(templateFS, "templates/index.html"); err != nil {
-		return nil, fmt.Errorf("parsing index template: %w", err)
-	}
-	pages["index"] = index
 
 	return &Server{pages: pages, logger: logger}, nil
+}
+
+// parsePage clones layout and adds the content template of the named page to the clone.
+func parsePage(layout *template.Template, name string) (*template.Template, error) {
+	page, err := layout.Clone()
+	if err != nil {
+		return nil, fmt.Errorf("cloning layout template for %s: %w", name, err)
+	}
+	if _, err = page.ParseFS(templateFS, "templates/"+name+".html"); err != nil {
+		return nil, fmt.Errorf("parsing %s template: %w", name, err)
+	}
+	return page, nil
 }
 
 // Handler returns the HTTP handler that routes requests to the site's pages.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleIndex)
+	mux.HandleFunc("GET /impressum", s.handleImpressum)
 	staticFiles, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		s.logger.Error("opening embedded static files", "error", err)
@@ -69,7 +81,11 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, "index", indexData{Title: "Sudhaus Engen", Heading: "Brauplan 2027"})
+	s.render(w, r, "index", pageData{Title: "Sudhaus Engen", Heading: "Brauplan 2027"})
+}
+
+func (s *Server) handleImpressum(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, "impressum", pageData{Title: "Impressum - Sudhaus Engen", Heading: "Impressum"})
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, data any) {
