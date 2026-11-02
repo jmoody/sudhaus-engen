@@ -1,12 +1,20 @@
 {{define "content"}}
 <h1>{{.Heading}}</h1>
 <p>Beginn ist immer um 9:30 Uhr; Ende meist gegen 19:00 Uhr.</p>
-<ol>
-  <li><time datetime="2026-11-06">Freitag, 6. November 2026</time> - Pils #1</li>
-  <li><time datetime="2026-12-04">Freitag, 4. Dezember 2026</time> - Böckle #1</li>
-  <li><time datetime="2027-01-08">Freitag, 8. Januar 2027</time> - Pils #2</li>
-  <li><time datetime="2027-02-12">Freitag, 12. Februar 2027</time> - Böckle #2</li>
-  <li><time datetime="2027-03-26">Freitag, 26. März 2027</time> - Pils #3</li>
-  <li><time datetime="2027-05-27">Donnerstag, 27. Mai 2027</time> - Summer Ale</li>
-</ol>
+<table class="brew-days">
+  <thead>
+    <tr>
+      <th scope="col">Datum</th>
+      <th scope="col">Bier</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><time datetime="2026-11-06"><span class="day-name">Freitag</span> <span class="day-num">6.</span> <span class="month">Nov</span> <span class="year">2026</span></time></td><td>Pils</td></tr>
+    <tr><td><time datetime="2026-12-04"><span class="day-name">Freitag</span> <span class="day-num">4.</span> <span class="month">Dez</span> <span class="year">2026</span></time></td><td>Böckle</td></tr>
+    <tr><td><time datetime="2027-01-08"><span class="day-name">Freitag</span> <span class="day-num">8.</span> <span class="month">Jan</span> <span class="year">2027</span></time></td><td>Pils</td></tr>
+    <tr><td><time datetime="2027-02-12"><span class="day-name">Freitag</span> <span class="day-num">12.</span> <span class="month">Feb</span> <span class="year">2027</span></time></td><td>Böckle</td></tr>
+    <tr><td><time datetime="2027-03-26"><span class="day-name">Freitag</span> <span class="day-num">26.</span> <span class="month">Mär</span> <span class="year">2027</span></time></td><td>Pils</td></tr>
+    <tr><td><time datetime="2027-05-27"><span class="day-name">Donnerstag</span> <span class="day-num">27.</span> <span class="month">Mai</span> <span class="year">2027</span></time></td><td>Summer Ale</td></tr>
+  </tbody>
+</table>
 {{end}}

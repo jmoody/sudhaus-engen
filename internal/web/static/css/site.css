@@ -105,6 +105,58 @@ address {
   color: #78401f;
 }
 
+.brew-days {
+  margin: 2rem 0 0;
+  max-width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  /* The date parts below are fixed-width, so the row cannot reflow. Shrink the type on a
+     narrow viewport instead, which keeps the whole grid on a 320px screen. */
+  font-size: clamp(0.95rem, 4.8vw, 1.125rem);
+}
+
+.brew-days th,
+.brew-days td {
+  padding: 0.4rem clamp(1rem, 5vw, 2.5rem) 0.4rem 0;
+  vertical-align: baseline;
+}
+
+.brew-days th {
+  border-bottom: 0.125rem solid #a95f32;
+  color: #78401f;
+}
+
+.brew-days th:last-child,
+.brew-days td:last-child {
+  padding-right: 0;
+}
+
+/* The site font is monospaced, so ch units lay every date part on the character grid. The
+   real spaces between the parts are the column gaps, which keeps the date readable as plain
+   text; nowrap stops those spaces from becoming line breaks and shearing the grid. The
+   weekday width fits the longest German name (Donnerstag) and the month is always a
+   three-letter abbreviation. */
+.brew-days time {
+  white-space: nowrap;
+}
+
+.brew-days time > span {
+  display: inline-block;
+  text-align: right;
+}
+
+.brew-days .day-name {
+  width: 10ch;
+}
+
+.brew-days .day-num {
+  width: 3ch;
+}
+
+.brew-days .month {
+  width: 3ch;
+}
+
 .site-footer {
   display: flex;
   flex-wrap: wrap;
@@ -146,6 +198,10 @@ address {
   }
 
   .site-main a {
+    color: #e6a674;
+  }
+
+  .brew-days th {
     color: #e6a674;
   }
 
