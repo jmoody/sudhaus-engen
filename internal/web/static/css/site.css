@@ -131,27 +131,30 @@ address {
   padding-right: 0;
 }
 
-/* The site font is monospaced, so ch units lay every date part on the character grid.
-   The weekday width fits the longest German name (Donnerstag) and the month is always a
-   three-letter abbreviation, so each padding is just the gap to the column that follows. */
+/* The site font is monospaced, so ch units lay every date part on the character grid. The
+   real spaces between the parts are the column gaps, which keeps the date readable as plain
+   text; nowrap stops those spaces from becoming line breaks and shearing the grid. The
+   weekday width fits the longest German name (Donnerstag) and the month is always a
+   three-letter abbreviation. */
+.brew-days time {
+  white-space: nowrap;
+}
+
 .brew-days time > span {
   display: inline-block;
   text-align: right;
 }
 
 .brew-days .day-name {
-  width: 12ch;
-  padding-right: 2ch;
+  width: 10ch;
 }
 
 .brew-days .day-num {
-  width: 4ch;
-  padding-right: 1ch;
+  width: 3ch;
 }
 
 .brew-days .month {
-  width: 4ch;
-  padding-right: 1ch;
+  width: 3ch;
 }
 
 .site-footer {

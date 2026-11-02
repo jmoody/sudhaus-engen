@@ -3,6 +3,7 @@ package web_test
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -48,18 +49,22 @@ func TestServer_FrontPage(t *testing.T) {
 	require.Contains(body, "Beginn ist immer um 9:30 Uhr; Ende meist gegen 19:00 Uhr.")
 	require.Contains(body, `<th scope="col">Datum</th>`)
 	require.Contains(body, `<th scope="col">Bier</th>`)
-	require.Contains(body, `<span class="month">Nov</span>`)
 
-	// Each row is matched whole so that a date can never drift away from the beer beside it.
-	for _, row := range []struct{ date, weekday, beer string }{
-		{"2026-11-06", "Freitag", "Pils"},
-		{"2026-12-04", "Freitag", "Böckle"},
-		{"2027-01-08", "Freitag", "Pils"},
-		{"2027-02-12", "Freitag", "Böckle"},
-		{"2027-03-26", "Freitag", "Pils"},
-		{"2027-05-27", "Donnerstag", "Summer Ale"},
+	// Each row is matched whole so that no part of a date can drift away from the beer
+	// beside it, and so that a visible component cannot disagree with the datetime.
+	for _, row := range []struct{ date, weekday, day, month, year, beer string }{
+		{"2026-11-06", "Freitag", "6.", "Nov", "2026", "Pils"},
+		{"2026-12-04", "Freitag", "4.", "Dez", "2026", "Böckle"},
+		{"2027-01-08", "Freitag", "8.", "Jan", "2027", "Pils"},
+		{"2027-02-12", "Freitag", "12.", "Feb", "2027", "Böckle"},
+		{"2027-03-26", "Freitag", "26.", "Mär", "2027", "Pils"},
+		{"2027-05-27", "Donnerstag", "27.", "Mai", "2027", "Summer Ale"},
 	} {
-		require.Regexp(`datetime="`+row.date+`">.*>`+row.weekday+`<.*<td>`+row.beer+`</td>`, body)
+		require.Contains(body, fmt.Sprintf(
+			`<time datetime=%q><span class="day-name">%s</span> <span class="day-num">%s</span> `+
+				`<span class="month">%s</span> <span class="year">%s</span></time></td><td>%s</td>`,
+			row.date, row.weekday, row.day, row.month, row.year, row.beer,
+		))
 	}
 
 	require.NotContains(body, "<ol>")
