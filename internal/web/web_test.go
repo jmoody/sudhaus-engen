@@ -48,6 +48,7 @@ func TestServer_FrontPage(t *testing.T) {
 	require.Contains(body, "Beginn ist immer um 9:30 Uhr; Ende meist gegen 19:00 Uhr.")
 	require.Contains(body, `<th scope="col">Datum</th>`)
 	require.Contains(body, `<th scope="col">Bier</th>`)
+	require.Contains(body, `<span class="month">Nov</span>`)
 
 	// Each row is matched whole so that a date can never drift away from the beer beside it.
 	for _, row := range []struct{ date, weekday, beer string }{
@@ -63,6 +64,7 @@ func TestServer_FrontPage(t *testing.T) {
 
 	require.NotContains(body, "<ol>")
 	require.NotContains(body, "#1")
+	require.NotContains(body, "November")
 	require.NotContains(body, "Hello world")
 }
 
