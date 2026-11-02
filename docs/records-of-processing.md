@@ -1,52 +1,54 @@
-# Verzeichnis von Verarbeitungstätigkeiten
+# Records of processing activities
 
-Verzeichnis nach Art. 30 Abs. 1 DSGVO für die Website sudhaus-engen.de.
+Record under Art. 30(1) GDPR for the website sudhaus-engen.de.
 
-Dieses Verzeichnis wird nicht veröffentlicht. Es wird der Aufsichtsbehörde auf Anfrage vorgelegt (Art. 30 Abs. 4 DSGVO). Es nennt ausschließlich Kategorien, Empfänger und Fristen und enthält selbst keine personenbezogenen Daten.
+This is a translation for contributors. The authoritative version, and the one given to the supervisory authority, is [records-of-processing.de.md](records-of-processing.de.md). Changes must be carried into both versions.
 
-Art. 30 Abs. 5 DSGVO nimmt Verantwortliche mit weniger als 250 Beschäftigten aus, soweit die Verarbeitung nur gelegentlich erfolgt. Die Website ist dauerhaft erreichbar und verarbeitet daher nicht nur gelegentlich. Das Verzeichnis wird deshalb geführt.
+This record is not published. It is produced to the supervisory authority on request (Art. 30(4) GDPR). It names only categories, recipients, and time limits, and holds no personal data itself.
 
-Die veröffentlichte [Datenschutzerklärung](../internal/web/templates/datenschutz.html) beschreibt dieselben Verarbeitungen. Änderungen an einem der beiden Texte sind im anderen nachzuziehen.
+Art. 30(5) GDPR exempts a controller with fewer than 250 employees where the processing is only occasional. The website is permanently reachable and therefore does not process occasionally, so the record is kept.
 
-## Verantwortlicher
+The published [Datenschutzerklärung](../internal/web/templates/datenschutz.html) describes the same processing.
 
-Joshua Moody, Lupfenstraße 1, 78234 Engen, Deutschland. E-Mail: joshua.moody.de@gmail.com.
+## Controller
 
-Ein Datenschutzbeauftragter ist nicht bestellt. Die Voraussetzungen des Art. 37 Abs. 1 DSGVO und des § 38 Abs. 1 BDSG liegen nicht vor.
+Joshua Moody, Lupfenstraße 1, 78234 Engen, Germany. Email: joshua.moody.de@gmail.com.
 
-## Tätigkeit 1: Auslieferung der Website
+No data protection officer is appointed. Neither Art. 37(1) GDPR nor § 38(1) BDSG applies.
 
-| Angabe nach Art. 30 Abs. 1         | Inhalt                                                                                                                                                                                                                                                                              |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Zweck                              | Betrieb der Website und Beantwortung der Seitenabrufe                                                                                                                                                                                                                               |
-| Rechtsgrundlage                    | Art. 6 Abs. 1 lit. f DSGVO. Berechtigtes Interesse: zuverlässige und sichere Auslieferung der Website                                                                                                                                                                               |
-| Kategorien betroffener Personen    | Besucherinnen und Besucher der Website                                                                                                                                                                                                                                              |
-| Kategorien personenbezogener Daten | IP-Adresse und die übrigen Verbindungsdaten der HTTP-Anfrage, verarbeitet allein zur Beantwortung der Anfrage                                                                                                                                                                       |
-| Kategorien von Empfängern          | Microsoft als Hostingdienstleister, Auftragsverarbeiter nach Art. 28 DSGVO auf Grundlage des Microsoft Products and Services Data Protection Addendum (DPA), zugleich eigenständig Verantwortlicher für eigene Geschäftstätigkeiten nach demselben DPA                              |
-| Drittlandübermittlung              | USA (Microsoft Corporation), gestützt auf den Angemessenheitsbeschluss zum EU-US Data Privacy Framework und auf die Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO, die Bestandteil des DPA sind                                                                         |
-| Löschfristen                       | Die Anwendung speichert keine Anfragedaten. Die Betriebsprotokolle in Azure Log Analytics enthalten keine personenbezogenen Daten und werden nach 30 Tagen gelöscht. Die Speicherdauer der von Microsoft als eigenständig Verantwortlichem verarbeiteten Daten nennt das DPA nicht. |
+## Activity 1: serving the website
 
-## Tätigkeit 2: E-Mail-Korrespondenz
+| Art. 30(1) item             | Content                                                                                                                                                                                                                                         |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Purpose                     | Operating the website and answering page requests                                                                                                                                                                                               |
+| Legal basis                 | Art. 6(1)(f) GDPR. Legitimate interest: reliable and secure delivery of the website                                                                                                                                                             |
+| Categories of data subjects | Visitors to the website                                                                                                                                                                                                                         |
+| Categories of personal data | IP address and the remaining connection data of the HTTP request, processed solely to answer the request                                                                                                                                        |
+| Categories of recipients    | Microsoft as hosting provider, processor under Art. 28 GDPR on the basis of the Microsoft Products and Services Data Protection Addendum (DPA), and at the same time independent controller for its own business operations under that same DPA |
+| Third-country transfer      | United States (Microsoft Corporation), based on the adequacy decision for the EU-US Data Privacy Framework and on the Standard Contractual Clauses under Art. 46(2)(c) GDPR that form part of the DPA                                           |
+| Time limits for erasure     | The application stores no request data. The operational logs in Azure Log Analytics hold no personal data and are deleted after 30 days. The DPA gives no retention period for the data Microsoft processes as an independent controller.       |
 
-| Angabe nach Art. 30 Abs. 1         | Inhalt                                                                                                                        |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Zweck                              | Beantwortung von Anfragen an die im Impressum genannte E-Mail-Adresse                                                         |
-| Rechtsgrundlage                    | Art. 6 Abs. 1 lit. f DSGVO, bei einem vertragsbezogenen Anliegen Art. 6 Abs. 1 lit. b DSGVO                                   |
-| Kategorien betroffener Personen    | Absenderinnen und Absender von E-Mails                                                                                        |
-| Kategorien personenbezogener Daten | E-Mail-Adresse, Name soweit angegeben, Inhalt der Nachricht und ihrer Anlagen                                                 |
-| Kategorien von Empfängern          | Google Ireland Limited als Anbieter des Postfachs                                                                             |
-| Drittlandübermittlung              | Keine vom Verantwortlichen veranlasste Übermittlung. Ob der Postfachanbieter in Drittländern verarbeitet, wurde nicht geprüft |
-| Löschfristen                       | Löschung, sobald das Anliegen erledigt ist und keine gesetzliche Aufbewahrungspflicht entgegensteht                           |
+## Activity 2: email correspondence
 
-## Technische und organisatorische Maßnahmen (Art. 30 Abs. 1 lit. g DSGVO)
+| Art. 30(1) item             | Content                                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Purpose                     | Answering enquiries sent to the email address named in the Impressum                                               |
+| Legal basis                 | Art. 6(1)(f) GDPR, or Art. 6(1)(b) GDPR where the enquiry relates to a contract                                    |
+| Categories of data subjects | Senders of email                                                                                                   |
+| Categories of personal data | Email address, name where given, and the content of the message and its attachments                                |
+| Categories of recipients    | Google Ireland Limited as the mailbox provider                                                                     |
+| Third-country transfer      | No transfer initiated by the controller. Whether the mailbox provider processes in third countries was not checked |
+| Time limits for erasure     | Deletion once the enquiry is settled and no statutory retention duty applies                                       |
 
-- Alle Verbindungen zur Website laufen über TLS mit einem von Azure Container Apps verwalteten Zertifikat.
-- Die Anwendung schreibt keine Anfragedaten in ein Protokoll. Die Regel steht in `.github/instructions/go.instructions.md` und in ADR 0001 und wird im Code-Review geprüft.
-- Die Ingress-Tabelle `ContainerAppHTTPLogs`, die Client-IP-Adressen führt, wird nicht in den Log Analytics Workspace geschrieben.
-- Der Log Analytics Workspace liegt in der Region Westeuropa und löscht nach 30 Tagen.
-- Die Seite setzt keine Cookies, bindet kein Analyse- oder Tracking-Werkzeug ein und lädt keine Ressource von einem fremden Server.
-- Die Azure-Umgebung wird ausschließlich vom Verantwortlichen verwaltet; die Infrastruktur ist in Terraform beschrieben und versioniert.
+## Technical and organisational measures (Art. 30(1)(g) GDPR)
 
-## Vorbehalt
+- Every connection to the website runs over TLS with a certificate managed by Azure Container Apps.
+- The application writes no request data to a log. The rule is recorded in `.github/instructions/go.instructions.md` and in ADR 0001, and is checked in code review.
+- The ingress table `ContainerAppHTTPLogs`, which carries client IP addresses, is not written to the Log Analytics workspace.
+- The Log Analytics workspace sits in the West Europe region and deletes after 30 days.
+- The site sets no cookie, embeds no analytics or tracking tool, and loads no resource from a third-party server.
+- The Azure environment is administered by the controller alone, and the infrastructure is described and versioned in Terraform.
 
-Diese Einschätzung hat kein Anwalt geprüft. Die Speicherdauer der Daten, die Microsoft als eigenständig Verantwortlicher verarbeitet, ist nicht bekannt.
+## Reservation
+
+No lawyer has checked this reading. The retention period for the data Microsoft processes as an independent controller is not known.
