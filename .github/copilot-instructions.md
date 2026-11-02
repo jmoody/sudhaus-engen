@@ -14,6 +14,20 @@ Scoped instruction files auto-apply to matching files and are not duplicated her
 - `.github/instructions/markdown.instructions.md` covers Markdown (`applyTo: "**/*.md"`).
 - `.github/instructions/terraform.instructions.md` covers Terraform and Azure infrastructure under `terraform/` (`applyTo: "**/*.tf,terraform/**"`).
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repository's GitHub Issues; use `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+For triage, use the default label vocabulary in `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repo. Before exploring domain concepts or recording decisions, read `docs/agents/domain.md`.
+
 ## Architecture decisions
 
 Significant, hard-to-reverse technical decisions (hosting, deploy topology, new dependencies) are recorded as Architecture Decision Records under `docs/adrs/`. Read the relevant ADR before changing a decision it covers, and author new ADRs with the `adr-author` skill.
