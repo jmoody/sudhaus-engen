@@ -69,7 +69,7 @@ func (s *Server) Handler() http.Handler {
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, "index", indexData{Title: "Sudhaus Engen", Heading: "Hello world"})
+	s.render(w, r, "index", indexData{Title: "Sudhaus Engen", Heading: "Brauplan 2027"})
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, data any) {

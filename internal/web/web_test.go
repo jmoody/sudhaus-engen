@@ -38,7 +38,15 @@ func TestServer_FrontPage(t *testing.T) {
 	require.Equal("text/html; charset=utf-8", rec.Header().Get("Content-Type"))
 	require.Contains(rec.Body.String(), `<html lang="de">`)
 	require.Contains(rec.Body.String(), `<link rel="stylesheet" href="/static/css/site.css">`)
-	require.Contains(rec.Body.String(), "<h1>Hello world</h1>")
+	require.Contains(rec.Body.String(), "<h1>Brauplan 2027</h1>")
+	require.Contains(rec.Body.String(), "Beginn ist immer um 9:30 Uhr; Ende meist gegen 19:00 Uhr.")
+	require.Contains(rec.Body.String(), `<time datetime="2026-11-06">Freitag, 6. November 2026</time>`)
+	require.Contains(rec.Body.String(), `<time datetime="2026-12-04">Freitag, 4. Dezember 2026</time>`)
+	require.Contains(rec.Body.String(), `<time datetime="2027-01-08">Freitag, 8. Januar 2027</time>`)
+	require.Contains(rec.Body.String(), `<time datetime="2027-02-12">Freitag, 12. Februar 2027</time>`)
+	require.Contains(rec.Body.String(), `<time datetime="2027-03-26">Freitag, 26. März 2027</time>`)
+	require.Contains(rec.Body.String(), `<time datetime="2027-05-27">Donnerstag, 27. Mai 2027</time>`)
+	require.NotContains(rec.Body.String(), "Hello world")
 }
 
 func TestServer_StaticFiles(t *testing.T) {
