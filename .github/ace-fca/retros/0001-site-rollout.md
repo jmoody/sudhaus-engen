@@ -147,13 +147,14 @@ Copilot Code Review (CCR) findings on this cycle's pull request, and the local-g
 
 ### CCR findings
 
-Output of `.github/skills/ccr-loop/scripts/ccr-loop.sh capture 11`, taken after round 2:
+Output of `.github/skills/ccr-loop/scripts/ccr-loop.sh capture 11`, taken after round 3:
 
 ```json
 {"body":"This makes T8's completion criterion circular: the batch requires all nine tasks to be closed, including T8 itself, so this check cannot pass before T8 is closed. Limit this requirement to the batch's site-level checks and leave task closure to batch completion. The same wording is already present in https://github.com/jmoody/sudhaus-engen/issues/9, so update that issue as well.","id":"PRRT_kwDOVOExqs6yzXVO","isResolved":true,"line":null,"path":".github/ace-fca/plans/0001-site-rollout.md"}
+{"body":"Immediately after a push, `gh pr checks <pr>` returns a snapshot and exits with code 8 if checks are pending. This instruction only blocks on a failing check, so an agent can follow it and request CCR while build, lint, and test are still running, contrary to the retrospective's green-check gate. Explicitly wait for CI to finish successfully and block review requests on pending or unavailable results as well as failures.","id":"PRRT_kwDOVOExqs6y0RoP","isResolved":true,"line":null,"path":".github/ace-fca/prompts/post-implementation.prompt.md"}
 ```
 
-Round 1 raised this one thread. Round 2 returned no comments. The fix is in the plan and in https://github.com/jmoody/sudhaus-engen/issues/9.
+Round 1 raised the first thread. Round 2 returned no comments. Round 3 raised the second thread. The first fix is in the plan and in https://github.com/jmoody/sudhaus-engen/issues/9. The second fix is in the post-implementation prompt.
 
 The CI checks (build, lint, test) also failed on the first push. CCR did not report this. All three failed in `script/bootstrap`, because `terraform` is a required dependency and the workflows did not install it. The failure was not new. The runners never had Terraform.
 
