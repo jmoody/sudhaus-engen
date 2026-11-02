@@ -111,6 +111,11 @@ func TestServer_DatenschutzCoversArticle13(t *testing.T) {
 		{item: "recipient: email provider", text: "Google Ireland Limited"},
 		{item: "third-country transfer", text: "EU-US Data Privacy Framework"},
 		{item: "third-country safeguard", text: "Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO"},
+		{item: "third-country safeguard: where published", text: `<a href="https://aka.ms/dpa">`},
+		{
+			item: "third-country safeguard: how to obtain a copy",
+			text: "Eine Kopie der Standardvertragsklauseln können Sie",
+		},
 		{item: "retention", text: "Sie werden nach 30 Tagen gelöscht."},
 		{item: "rights", text: "Auskunft (Art. 15 DSGVO)"},
 		{

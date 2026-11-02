@@ -82,6 +82,13 @@ h2 {
   font-size: 1.375rem;
 }
 
+/* German compound nouns can be wider than a 320px viewport, so let headings break instead of scrolling. */
+h1,
+h2 {
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
 address {
   font-style: normal;
 }
