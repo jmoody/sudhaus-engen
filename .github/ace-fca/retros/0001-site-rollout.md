@@ -7,7 +7,7 @@ branch: main
 repository: sudhaus-engen
 topic: "Issue tree for the site rollout Retrospective"
 tags: [retrospective, ace-fca, rollout, issues, planning]
-status: in-progress
+status: complete
 last_updated: 2026-11-01
 last_updated_by: "GitHub Copilot"
 ---
@@ -119,6 +119,7 @@ Step 8 of the planning prompt, one finding at a time.
 ### What was missing
 
 - The plan gave no recovery step for a partial creation run. Add one: list the issues, keep what exists, and create only the rest.
+- The plan and the implement prompt have no step that reads the CI result of the draft pull request. Add one, before the CCR request.
 
 ## What the local review missed
 
@@ -126,11 +127,15 @@ Copilot Code Review (CCR) findings on this cycle's pull request, and the local-g
 
 ### CCR findings
 
-[To be completed after the pull request exists]
+1. Round 1, `.github/ace-fca/plans/0001-site-rollout.md` (T8 "Done when"): the criterion "All Done when items of the batch are true" is circular, because the batch requires T8 itself to be closed. The same text was in https://github.com/jmoody/sudhaus-engen/issues/9. Fixed in the plan and in the issue. Round 2 returned no comments.
+
+The CI checks (build, lint, test) also failed on the first push and were not part of CCR. All three failed in `script/bootstrap`, because `terraform` is a required dependency and the workflows did not install it. The failure was not new. The runners never had Terraform.
 
 ### Local-gate gaps and fixes
 
-[To be completed after the pull request exists]
+- Circular criteria. The plan's scope validation checks that each task stands alone, but it does not check that a task's "Done when" list cannot depend on the task's own closure. Add a check: for each criterion that refers to a parent, confirm that it does not need the task itself to be closed.
+- CI environment. `make review` runs on the operator's machine, which has Terraform, so it cannot show that a CI runner lacks a tool. Fixed by adding `hashicorp/setup-terraform` to the four workflows that run `script/bootstrap`. Check `gh pr checks <pr>` before the CCR loop starts, and again after every push. A red check comes first, because CCR runs on a branch whose checks are red.
+- The agent did not read the CI result for the first push, and the operator found the failure. Make "read the PR checks" the first step after opening a pull request, before the CCR request.
 
 ## Creative Icebreakers
 
@@ -154,5 +159,6 @@ The issue tree is a brew-day checklist. The batch is the brew day, and each task
 
 ### Prompt Evolution Recommendations
 
-- The implement-plan prompt names VS Code tools (`replace_string_in_file`, `get_errors`, `get_changed_files`, `runSubagent`). Name the Copilot CLI tools, or describe the action instead of the tool.
+- The implement-plan prompt's final checks name `make review` but not the CI checks of the pull request. Add "all CI checks pass" to the Pre-Completion Verification Checklist.
+- The prompt names VS Code tools (`replace_string_in_file`, `get_errors`, `get_changed_files`, `runSubagent`). Name the Copilot CLI tools, or describe the action instead of the tool.
 - The prompt's code-quality checklist does not apply to a plan that creates issues and writes no code. Say which checks apply when a plan has no code output.
