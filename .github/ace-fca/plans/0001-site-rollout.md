@@ -36,7 +36,7 @@ All decisions below were made with the operator on 2026-10-18. The research docu
 - **DNS** (point 12): Azure DNS zone, delegated from INWX. DNSSEC is not part of this plan.
 - **Hosting** (points 4, 13): `min_replicas = 1`, Log Analytics workspace without `ContainerAppHTTPLogs`, retention of 30 days. The operator confirmed the 30-day value. The Datenschutzerklärung task states it and the Terraform task applies it.
 - **Calendar** (points 7, 8, 16): a list page fed by an embedded data file. The ADR in the brew-day task sets the file format and the time representation.
-- **Fonts and assets** (points 5, 15): one hand-written stylesheet and self-hosted public-domain fonts, embedded in the binary.
+- **Fonts and assets** (points 5, 15): one hand-written stylesheet and self-hosted SIL OFL fonts, embedded in the binary.
 - **Delivery** (points 9, 19): scripts under `script/`, confirmed with the `az` CLI. No health endpoint.
 - **Security and records** (points 17, 18): response headers and server timeouts are one task. A short records-of-processing file is part of the Datenschutzerklärung task.
 
@@ -82,7 +82,7 @@ Suggested order for one engineer: T1, T2, T3, T9, T5, T6, T7, T4, T8. The order 
 - No `.ics` feed, month grid, DNSSEC, `security.txt`, health endpoint, `www` name, CAA record, or image-retention policy.
 - No CI/CD pipeline. `docs/deployment-with-scripts.md` keeps its script-based model.
 - No application code, Terraform, or scripts in this plan. The tasks own all of it.
-- No lawyer review, font-license check, or check of Microsoft's own retention period. The operator accepted these as unverified.
+- No lawyer review or check of Microsoft's own retention period. The operator accepted these as unverified.
 
 ## Implementation phases
 
@@ -168,7 +168,8 @@ Rollback: close the ten issues as "not planned". The plan changes nothing else.
 - Parse each page template together with the layout into one page set. Add one `render` helper in `internal/web/web.go` that executes a page into a buffer, logs a failure, returns a 500, sets the content type, and writes the result. `handleIndex` uses it. Later pages add a route and a short handler, and no new `Server` field.
 - Add embedded static files under `internal/web/static/` and serve them at `/static/`. A directory under `internal/` needs no change to `.dockerignore`.
 - Add one hand-written stylesheet. It works on a small screen. It needs no build step and no new dependency.
-- Add the font files that the operator chooses (public domain). Serve them from the same host.
+- Add the operator's chosen Inconsolata Nerd Font Mono regular and bold files (SIL OFL). Serve them from the same host and include the font license.
+- Use the font site-wide, with a warm light/dark palette and copper accent. Keep the header and footer simple, showing the site name with no footer links.
 - Replace the chi paragraph in `.github/instructions/go.instructions.md` ("HTTP handler design") with the `net/http` `ServeMux` pattern that `Handler()` uses: method-and-path patterns such as `GET /{$}`, and no router dependency. The repository holds no chi code and no `internal/api/rest/routes.go`.
 - Use no inline `<style>`, no `style` attribute, and no inline script in any template.
 - Do not add footer links. The Impressum task and the Datenschutzerklärung task add their own links.

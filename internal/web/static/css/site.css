@@ -1,0 +1,100 @@
+@font-face {
+  font-family: "Inconsolata Nerd Font Mono";
+  src: url("/static/fonts/InconsolataNerdFontMono-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inconsolata Nerd Font Mono";
+  src: url("/static/fonts/InconsolataNerdFontMono-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  font-family: "Inconsolata Nerd Font Mono", monospace;
+  color: #29251f;
+  background: #f5f0e5;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 20rem;
+  min-height: 100vh;
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+.site-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.site-header,
+.site-footer {
+  padding: 1rem clamp(1rem, 5vw, 3rem);
+  color: #f5f0e5;
+  background: #29251f;
+}
+
+.site-header {
+  border-bottom: 0.25rem solid #a95f32;
+}
+
+.site-name,
+.site-footer p {
+  margin: 0;
+}
+
+.site-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.site-main {
+  width: min(100% - 2rem, 48rem);
+  margin: 0 auto;
+  padding: clamp(2rem, 8vw, 5rem) 0;
+  flex: 1;
+}
+
+h1 {
+  margin: 0;
+  color: #78401f;
+  font-size: clamp(2rem, 8vw, 3rem);
+  line-height: 1.15;
+}
+
+.site-footer {
+  border-top: 0.125rem solid #a95f32;
+  font-size: 1rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    color: #f3ead9;
+    background: #201d19;
+  }
+
+  .site-header,
+  .site-footer {
+    color: #f3ead9;
+    background: #161411;
+  }
+
+  h1 {
+    color: #e6a674;
+  }
+}
