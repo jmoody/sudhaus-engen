@@ -9,7 +9,9 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
+	"os"
 )
 
 //go:embed templates/*.html
@@ -111,6 +113,22 @@ func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, dat
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := buf.WriteTo(w); err != nil {
-		s.logger.WarnContext(r.Context(), "writing page", "page", page, "error", err)
+		s.logger.WarnContext(r.Context(), "writing page", "page", page, "error", writeErrorReason(err))
 	}
+}
+
+// writeErrorReason classifies a failed response write. A write to a client that has gone away
+// returns a *net.OpError whose Source and Addr put both socket addresses into its message, so the
+// raw error never reaches the log: ADR 0001 and the published Datenschutzerklärung both state that
+// the logs hold no request data.
+func writeErrorReason(err error) string {
+	var opErr *net.OpError
+	if !errors.As(err, &opErr) {
+		return "write failed"
+	}
+	var syscallErr *os.SyscallError
+	if errors.As(opErr.Err, &syscallErr) {
+		return opErr.Op + ": " + syscallErr.Error()
+	}
+	return opErr.Op + ": connection error"
 }

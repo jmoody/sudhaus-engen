@@ -1,9 +1,13 @@
 package web_test
 
 import (
+	"bytes"
+	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -173,6 +177,57 @@ func TestServer_FooterLegalLinks(t *testing.T) {
 			require.Contains(t, rec.Body.String(), `<a href="/datenschutz">Datenschutzerklärung</a>`)
 		})
 	}
+}
+
+// brokenConnWriter fails every write the way net does when the peer has gone away.
+type brokenConnWriter struct {
+	header http.Header
+	err    error
+}
+
+func (w *brokenConnWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = make(http.Header)
+	}
+	return w.header
+}
+
+func (w *brokenConnWriter) Write([]byte) (int, error) { return 0, w.err }
+
+func (w *brokenConnWriter) WriteHeader(int) {}
+
+// TestServer_WriteFailureLogsNoClientAddress checks the no-personal-data logging rule of ADR 0001
+// against the one error the site cannot control: a response write to a client that has gone away
+// returns a *net.OpError whose message embeds the client's IP address and port.
+func TestServer_WriteFailureLogsNoClientAddress(t *testing.T) {
+	require := require.New(t)
+
+	// Arrange
+	writeErr := &net.OpError{
+		Op:     "write",
+		Net:    "tcp",
+		Source: &net.TCPAddr{IP: net.IPv4(10, 1, 2, 3), Port: 8000},
+		Addr:   &net.TCPAddr{IP: net.IPv4(203, 0, 113, 5), Port: 54321},
+		Err:    &os.SyscallError{Syscall: "write", Err: errors.New("broken pipe")},
+	}
+	require.Contains(writeErr.Error(), "203.0.113.5", "the fixture must carry an address to be worth testing")
+
+	var logs bytes.Buffer
+	srv, err := web.NewServer(slog.New(slog.NewTextHandler(&logs, nil)))
+	require.NoError(err)
+
+	// Act
+	w := &brokenConnWriter{err: writeErr}
+	req := httptest.NewRequest(http.MethodGet, "/datenschutz", nil)
+	srv.Handler().ServeHTTP(w, req)
+
+	// Assert
+	logged := logs.String()
+	require.Contains(logged, "writing page")
+	require.NotContains(logged, "203.0.113.5", "the client address must not reach the log")
+	require.NotContains(logged, "54321", "the client port must not reach the log")
+	require.NotContains(logged, "10.1.2.3", "the server address must not reach the log")
+	require.Contains(logged, "write: broken pipe", "the reason for the failure is still useful")
 }
 
 func TestServer_StaticFiles(t *testing.T) {

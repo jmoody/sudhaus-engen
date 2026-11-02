@@ -594,6 +594,7 @@ The published Datenschutzerklärung states that the stored logs contain no perso
 - Do not pass `*http.Request` or `*http.Response` to a log call. Pass `r.Context()` when the call needs a context.
 - Log only values the application itself owns, such as a template name, a route pattern, a configuration key, or an error from an internal operation.
 - Error values are not exempt. Do not wrap a request value into an error that is then logged.
+- Transport errors are not safe to log verbatim. A failed response write returns a `*net.OpError` whose `Source` and `Addr` put the client's IP address and port into its message. Classify such an error before logging it, as `writeErrorReason` in `internal/web/web.go` does.
 - Ingress request logging stays off, so there is no second source of request data to fall back on.
 
 ```go
@@ -604,6 +605,11 @@ s.logger.ErrorContext(r.Context(), "rendering page", "page", page, "error", err)
 s.logger.InfoContext(r.Context(), "request", "remote_addr", r.RemoteAddr)
 s.logger.InfoContext(r.Context(), "request", "path", r.URL.Path, "query", r.URL.RawQuery)
 s.logger.WarnContext(r.Context(), "forwarded", "xff", r.Header.Get("X-Forwarded-For"))
+
+// ❌ Bad: a *net.OpError renders as "write tcp 10.1.2.3:8000->203.0.113.5:54321: broken pipe"
+if _, err := buf.WriteTo(w); err != nil {
+    s.logger.WarnContext(r.Context(), "writing page", "error", err)
+}
 ```
 
 ## Dependencies
