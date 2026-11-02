@@ -50,6 +50,7 @@ When a coding agent opens a pull request by any means (`gh pr create`, the GitHu
 - Iterate the CCR loop until the review comes back clean: request review, wait for the review to land, fix or otherwise address every comment, resolve the corresponding review threads, then request a fresh CCR. Repeat this cycle until a new review produces no actionable comments. Do not treat a single review pass as sufficient when it raised comments; a clean pass with zero new comments is the exit condition.
 - Resolve each review thread only after the comment is fixed or explicitly addressed, using the `resolveReviewThread` GraphQL mutation on the thread id. A comment you disagree with must be answered in a reply before resolving; do not silently resolve unaddressed threads.
 - Use the pull request issue timeline to monitor CCR activity and confirm follow-up requests. The reviews endpoint returns only submitted reviews, so an empty review list does not mean CCR is not in progress; check the timeline again before concluding that no review exists.
+- Unresolved review threads are not the whole review. CCR reports findings against code that has not changed since the last review in a collapsed "previously missed issues" block in the review body, where they never become threads. Read the latest review body before calling a pass clean; "no unresolved threads" and "No open issues" can both appear while findings are still outstanding.
 
 ## Troubleshooting
 

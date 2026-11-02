@@ -17,16 +17,22 @@ Drive the iterative Copilot Code Review (CCR) loop for a pull request.
 Commands:
   review <pr> [--timeout N] [--interval N]
                                         Capture the current review baseline, request CCR, then wait
-                                        for the next review and list unresolved threads. Preferred:
-                                        this snapshots the baseline before requesting, avoiding a race.
+                                        for the next review and list unresolved threads and any
+                                        findings in the review overview. Preferred: this snapshots
+                                        the baseline before requesting, avoiding a race.
   request <pr>                          Request CCR and verify the timeline event.
   latest <pr>                           Print the submitted_at of the latest CCR review (empty if none).
   wait <pr> [--since TS] [--timeout N] [--interval N]
                                         Block until a CCR review newer than the baseline lands,
-                                        then list unresolved threads. Baseline is --since, or the
-                                        latest existing CCR review at invocation. When driving the
-                                        loop manually, capture --since with 'latest' before 'request'.
+                                        then list unresolved threads and overview findings. Baseline
+                                        is --since, or the latest existing CCR review at invocation.
+                                        When driving the loop manually, capture --since with 'latest'
+                                        before 'request'.
   threads <pr>                          List unresolved CCR review threads as JSON lines.
+  overview <pr>                         Print findings the latest review reports only in its body,
+                                        under "previously missed issues". These cover code unchanged
+                                        since the last review and never become threads, so 'threads'
+                                        alone cannot tell you the loop is clean.
   capture <pr>                          List all CCR review threads (resolved and unresolved) as
                                         JSON lines for retrospective capture.
   reply <thread-id> <message>           Reply to a review thread.
@@ -73,6 +79,52 @@ latest_review_ts() {
   local pr="$2"
   gh api "repos/${repo}/pulls/${pr}/reviews" --paginate \
     --jq ".[] | select(.user.login==\"${CCR_BOT_LOGIN}\") | .submitted_at" | tail -n 1
+}
+
+latest_review_id() {
+  local repo="$1"
+  local pr="$2"
+  gh api "repos/${repo}/pulls/${pr}/reviews" --paginate \
+    --jq ".[] | select(.user.login==\"${CCR_BOT_LOGIN}\") | .id" | tail -n 1
+}
+
+latest_review_body() {
+  local repo="$1"
+  local pr="$2"
+  local id
+  if ! id="$(latest_review_id "${repo}" "${pr}")"; then
+    log_error "Could not list CCR reviews for ${repo}#${pr}."
+    return 1
+  fi
+  if [[ -z "${id}" ]]; then
+    return 0
+  fi
+  if ! gh api "repos/${repo}/pulls/${pr}/reviews/${id}" --jq '.body // ""'; then
+    log_error "Could not read CCR review ${id} on ${repo}#${pr}."
+    return 1
+  fi
+}
+
+# CCR reports findings against code that has not changed since the last review inside a
+# "previously missed issues" block in the review body. Those never become review threads,
+# so a thread-only check reports a clean loop while they are still outstanding.
+overview_findings() {
+  local repo="$1"
+  local pr="$2"
+  local body
+  if ! body="$(latest_review_body "${repo}" "${pr}")"; then
+    return 1
+  fi
+  if [[ -z "${body}" ]]; then
+    return 0
+  fi
+  awk '
+    /previously missed issues/ { capture = 1 }
+    /resolved since last review/ { capture = 0 }
+    capture { print }
+  ' <<< "${body}" \
+    | sed -e 's|<picture>.*alt="\([A-Za-z]*\) severity".*</picture>|\1:|g' -e 's/<[^>]*>//g' \
+    | awk 'NF'
 }
 
 ccr_threads() {
@@ -226,12 +278,25 @@ cmd_wait() {
     if [[ -n "${latest}" && ( -z "${since}" || "${latest}" > "${since}" ) ]]; then
       log_info "New CCR review submitted at ${latest}."
       local threads
-      threads="$(unresolved_threads "${repo}" "${pr}")"
-      if [[ -z "${threads}" ]]; then
-        log_info "No unresolved CCR threads. Loop is complete."
-      else
+      local findings
+      if ! threads="$(unresolved_threads "${repo}" "${pr}")"; then
+        log_error "Could not list review threads; cannot confirm the loop is clean."
+        return 1
+      fi
+      if ! findings="$(overview_findings "${repo}" "${pr}")"; then
+        log_error "Could not read the latest review body; cannot confirm the loop is clean."
+        return 1
+      fi
+      if [[ -n "${threads}" ]]; then
         log_info "Unresolved CCR threads:"
         echo "${threads}"
+      fi
+      if [[ -n "${findings}" ]]; then
+        log_info "Findings in the review overview (these never appear as threads):"
+        echo "${findings}"
+      fi
+      if [[ -z "${threads}" && -z "${findings}" ]]; then
+        log_info "No unresolved CCR threads and no overview findings. Loop is complete."
       fi
       return 0
     fi
@@ -248,6 +313,13 @@ cmd_threads() {
   local repo
   repo="$(repo_slug)"
   unresolved_threads "${repo}" "${pr}"
+}
+
+cmd_overview() {
+  local pr="${1:?pull request number required}"
+  local repo
+  repo="$(repo_slug)"
+  overview_findings "${repo}" "${pr}"
 }
 
 cmd_capture() {
@@ -316,6 +388,7 @@ main() {
     wait) cmd_wait "$@" ;;
     review) cmd_review "$@" ;;
     threads) cmd_threads "$@" ;;
+    overview) cmd_overview "$@" ;;
     capture) cmd_capture "$@" ;;
     reply) cmd_reply "$@" ;;
     resolve) cmd_resolve "$@" ;;
@@ -323,4 +396,6 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi
