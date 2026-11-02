@@ -86,6 +86,14 @@ address {
   font-style: normal;
 }
 
+/* Art. 21 Abs. 4 DSGVO requires the right to object to stand out from the surrounding text. */
+.notice {
+  margin: 1rem 0;
+  padding: 0.25rem 1.25rem;
+  border-left: 0.25rem solid #a95f32;
+  background: #ebe1cd;
+}
+
 .site-main a {
   color: #78401f;
 }
@@ -101,6 +109,12 @@ address {
 
 .site-footer a {
   color: inherit;
+}
+
+.site-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -126,5 +140,9 @@ address {
 
   .site-main a {
     color: #e6a674;
+  }
+
+  .notice {
+    background: #2b2621;
   }
 }

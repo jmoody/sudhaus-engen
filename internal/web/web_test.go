@@ -68,8 +68,100 @@ func TestServer_Impressum(t *testing.T) {
 	require.Contains(rec.Body.String(), `<a href="mailto:joshua.moody.de@gmail.com">joshua.moody.de@gmail.com</a>`)
 }
 
-func TestServer_FooterImpressumLink(t *testing.T) {
-	for _, path := range []string{"/", "/impressum"} {
+func TestServer_Datenschutz(t *testing.T) {
+	require := require.New(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/datenschutz", nil)
+
+	newHandler(t).ServeHTTP(rec, req)
+
+	require.Equal(http.StatusOK, rec.Code)
+	require.Equal("text/html; charset=utf-8", rec.Header().Get("Content-Type"))
+	require.Contains(rec.Body.String(), "<title>Datenschutzerklärung - Sudhaus Engen</title>")
+	require.Contains(rec.Body.String(), "<h1>Datenschutzerklärung</h1>")
+}
+
+func TestServer_DatenschutzCoversArticle13(t *testing.T) {
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/datenschutz", nil)
+
+	newHandler(t).ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	body := rec.Body.String()
+
+	tests := []struct {
+		item string
+		text string
+	}{
+		{item: "controller identity", text: "Joshua Moody"},
+		{item: "controller address", text: "Lupfenstraße 1"},
+		{item: "controller contact", text: `<a href="mailto:joshua.moody.de@gmail.com">joshua.moody.de@gmail.com</a>`},
+		{item: "no data protection officer", text: "Es ist kein Datenschutzbeauftragter bestellt."},
+		{item: "purpose", text: "Zweck der Verarbeitung ist der Betrieb der Website"},
+		{item: "legal basis", text: "Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO."},
+		{item: "legitimate interest", text: "zuverlässige und sichere Auslieferung der Website"},
+		{item: "recipient: Microsoft as processor", text: "Auftragsverarbeiter nach Art. 28 DSGVO"},
+		{item: "recipient: Microsoft as independent controller", text: "eigenständig Verantwortlicher"},
+		{item: "recipient: email provider", text: "Google Ireland Limited"},
+		{item: "third-country transfer", text: "EU-US Data Privacy Framework"},
+		{item: "third-country safeguard", text: "Standardvertragsklauseln nach Art. 46 Abs. 2 lit. c DSGVO"},
+		{item: "retention", text: "Sie werden nach 30 Tagen gelöscht."},
+		{item: "rights", text: "Auskunft (Art. 15 DSGVO)"},
+		{
+			item: "complaint",
+			text: "Der Landesbeauftragte für den Datenschutz und die Informationsfreiheit Baden-Württemberg",
+		},
+		{item: "provision not required", text: "weder gesetzlich noch vertraglich verpflichtet"},
+		{item: "no automated decision-making", text: "Profiling nach Art. 22 DSGVO findet nicht statt"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.item, func(t *testing.T) {
+			require.Contains(t, body, tt.text)
+		})
+	}
+}
+
+// TestServer_DatenschutzMatchesSite checks the statements the notice makes about how the site works.
+func TestServer_DatenschutzMatchesSite(t *testing.T) {
+	require := require.New(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/datenschutz", nil)
+
+	newHandler(t).ServeHTTP(rec, req)
+
+	require.Equal(http.StatusOK, rec.Code)
+	body := rec.Body.String()
+
+	require.Contains(body, "setzt keine Cookies")
+	require.Contains(body, "kein Analyse- oder Tracking-Werkzeug")
+	require.Contains(body, "keine Ressource von einem fremden Server nachgeladen")
+	require.Contains(body, "enthalten keine personenbezogenen Daten")
+}
+
+// TestServer_DatenschutzWiderspruch checks that the right to object stands apart from the other
+// information, as Art. 21(4) DSGVO requires.
+func TestServer_DatenschutzWiderspruch(t *testing.T) {
+	require := require.New(t)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/datenschutz", nil)
+
+	newHandler(t).ServeHTTP(rec, req)
+
+	require.Equal(http.StatusOK, rec.Code)
+	body := rec.Body.String()
+
+	require.Contains(body, "<h2>9. Widerspruchsrecht</h2>")
+	require.Contains(body, `<div class="notice">`)
+	require.Contains(body, "Art. 21 Abs. 1 DSGVO")
+}
+
+func TestServer_FooterLegalLinks(t *testing.T) {
+	for _, path := range []string{"/", "/impressum", "/datenschutz"} {
 		t.Run(path, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodGet, path, nil)
@@ -78,6 +170,7 @@ func TestServer_FooterImpressumLink(t *testing.T) {
 
 			require.Equal(t, http.StatusOK, rec.Code)
 			require.Contains(t, rec.Body.String(), `<a href="/impressum">Impressum</a>`)
+			require.Contains(t, rec.Body.String(), `<a href="/datenschutz">Datenschutzerklärung</a>`)
 		})
 	}
 }

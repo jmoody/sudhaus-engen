@@ -586,6 +586,26 @@ type Config struct {
 - `Warn` - recoverable issues (rate limits, missing config fallbacks, evaluation failures)
 - `Error` - unrecoverable failures (startup errors, HTTP 5xx from dependencies)
 
+### No personal data in logs
+
+The published Datenschutzerklärung states that the stored logs contain no personal data, and ADR 0001 makes that a rule on the application code. One logged client IP address would make the published notice false.
+
+- Never log a value taken from an HTTP request: the client IP address, `X-Forwarded-For` or any other header, the query string, a path value, a form field, a cookie, or the request body.
+- Do not pass `*http.Request` or `*http.Response` to a log call. Pass `r.Context()` when the call needs a context.
+- Log only values the application itself owns, such as a template name, a route pattern, a configuration key, or an error from an internal operation.
+- Error values are not exempt. Do not wrap a request value into an error that is then logged.
+- Ingress request logging stays off, so there is no second source of request data to fall back on.
+
+```go
+// ✅ Good: only values the application owns
+s.logger.ErrorContext(r.Context(), "rendering page", "page", page, "error", err)
+
+// ❌ Bad: every one of these writes personal data to the log
+s.logger.InfoContext(r.Context(), "request", "remote_addr", r.RemoteAddr)
+s.logger.InfoContext(r.Context(), "request", "path", r.URL.Path, "query", r.URL.RawQuery)
+s.logger.WarnContext(r.Context(), "forwarded", "xff", r.Header.Get("X-Forwarded-For"))
+```
+
 ## Dependencies
 
 - Use Go modules for dependency management
@@ -610,3 +630,4 @@ type Config struct {
 - Reusing consumed `io.Reader` / `req.Body` without rebuffering (see [Memory management](#memory-management))
 - Storing per-request state on long-lived HTTP client structs (see [HTTP client design](#http-client-design))
 - Using `Get`/`Set` prefixes on method names (see [Method and function naming](#method-and-function-naming))
+- Logging a value taken from an HTTP request (see [No personal data in logs](#no-personal-data-in-logs))

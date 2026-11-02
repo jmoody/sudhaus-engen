@@ -40,7 +40,7 @@ func NewServer(logger *slog.Logger) (*Server, error) {
 	}
 
 	pages := make(map[string]*template.Template)
-	for _, name := range []string{"index", "impressum"} {
+	for _, name := range []string{"index", "impressum", "datenschutz"} {
 		page, pageErr := parsePage(layout, name)
 		if pageErr != nil {
 			return nil, pageErr
@@ -68,6 +68,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /impressum", s.handleImpressum)
+	mux.HandleFunc("GET /datenschutz", s.handleDatenschutz)
 	staticFiles, err := fs.Sub(staticFS, "static")
 	if err != nil {
 		s.logger.Error("opening embedded static files", "error", err)
@@ -86,6 +87,13 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleImpressum(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "impressum", pageData{Title: "Impressum - Sudhaus Engen", Heading: "Impressum"})
+}
+
+func (s *Server) handleDatenschutz(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, "datenschutz", pageData{
+		Title:   "Datenschutzerklärung - Sudhaus Engen",
+		Heading: "Datenschutzerklärung",
+	})
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, page string, data any) {
