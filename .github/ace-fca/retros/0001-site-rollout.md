@@ -97,7 +97,7 @@ The last comment came during the CCR loop. The agent had run `make review` local
 - Verify GitHub access with an authenticated call (`gh api user`) before drafting, not with `gh auth status` alone.
 - Before a rerun of any script that creates remote objects, list the objects that already exist.
 - Write shell loops for macOS and Linux. Do not use `seq` with a range that can be empty.
-- After every push, run `gh pr checks <pr>` before any other pull request step. Fix a red check before the CCR request. The agent now has this rule in `.github/ace-fca/prompts/post-implementation.prompt.md`.
+- After every push, run `gh pr checks <pr> --watch` before any other pull request step. Fix a red check before the CCR request. The agent now has this rule in `.github/ace-fca/prompts/post-implementation.prompt.md`.
 
 ### Phase and scope deviations
 
@@ -161,7 +161,7 @@ The CI checks (build, lint, test) also failed on the first push. CCR did not rep
 
 - Circular criteria. No local check covered completion criteria in plans and issue text. The check `Self-referential completion criteria` is now in the Focus areas of `.github/ace-fca/prompts/code-review.prompt.md`. It says a criterion must not depend on the closure of the item that owns it, or on a parent that requires that item to be closed.
 - Local-versus-CI parity. `make review` runs on the operator's machine, which has Terraform, so it cannot show that a CI runner lacks a tool. The check `Local-versus-CI parity` is now in item 7 (Configuration consistency) of `.github/ace-fca/prompts/post-implementation.prompt.md`. Fixed in this pull request by adding `hashicorp/setup-terraform` to the four workflows that run `script/bootstrap`.
-- Unread CI result. The agent requested CCR on a branch with three red checks. The new section `Pull request checks` in `.github/ace-fca/prompts/post-implementation.prompt.md` says to run `gh pr checks <pr>` before any review request, to fix a failing check first, and to read the checks again after every push.
+- Unread CI result. The agent requested CCR on a branch with three red checks. The new section `Pull request checks` in `.github/ace-fca/prompts/post-implementation.prompt.md` says to wait for the checks with `gh pr checks <pr> --watch` before any review request, to fix a failing check first, to block the request on a pending or unavailable result, and to wait again after every push. CCR round 3 found that the first wording ("read the checks") allowed a request while checks were still pending. The wording now says to wait.
 - Not added as checks, recorded as recommendations below: the stale `bash-scripting.instructions.md` path, the `implement-plan` checklist, and the `terraform-lint` header. They are prompt and documentation defects, not review checks.
 
 ## Creative Icebreakers

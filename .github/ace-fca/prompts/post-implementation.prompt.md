@@ -104,7 +104,7 @@ Fix now? (yes/no/defer)
 
 ## Pull request checks
 
-When the pull request exists, read its CI result before any review request, including Copilot Code Review: `gh pr checks <pr>`. Fix a failing check first. Read the log of a failed run with `gh run view <run-id> --log-failed`. Read the checks again after every push. A local `make review` pass does not replace this step.
+When the pull request exists, wait for its CI result before any review request, including Copilot Code Review: `gh pr checks <pr> --watch`. A snapshot taken right after a push shows pending checks and exits with code 8, so do not rely on one. Request review only when every check has finished and passed. A failing, pending, or unavailable result blocks the request. Fix a failing check first. Read the log of a failed run with `gh run view <run-id> --log-failed`. Wait for the checks again after every push. A local `make review` pass does not replace this step.
 
 ## Retrospective integration
 
