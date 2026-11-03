@@ -10,6 +10,8 @@ license: MIT
 
 Run `script/bootstrap-worktree --help` for the arguments.
 
+Uncommitted ACE-FCA documents come from the checkout you run it in, so a stacked worktree inherits the plan being worked on. `.env` and the Azure session come from the main checkout, which is where every worktree is provisioned from.
+
 ## Steps
 
 1. Pick the branch name: `<type>/issue-<N>-<slug>`, where type is `feat`, `fix`, or `chore` (`feat/issue-3-impressum`). Drop `issue-<N>` when no issue exists.
@@ -28,4 +30,6 @@ Uncommitted ACE-FCA documents are copied at bootstrap, not synced. An agent impl
 
 Once the pull request merges, run `git worktree remove <path>` and `git branch -D <branch>` from the source checkout.
 
-Keep the branch name of a live worktree fixed: renaming it deletes the worktree directory out from under every shell working in it. The name is cosmetic, and the pull request title carries the meaning.
+Keep the branch name of a live worktree fixed. The directory is named after the branch at creation, so a later rename leaves the path pointing at a name the branch no longer has, and the two drift apart. The name is cosmetic, and the pull request title carries the meaning.
+
+Removing or moving a worktree directory is what breaks a running session: every shell whose working directory sits inside it is left on a path that no longer exists. Do that only when no agent is working there.
