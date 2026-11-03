@@ -16,7 +16,7 @@ Uncommitted ACE-FCA documents come from the checkout you run it in, so a stacked
 
 1. Pick the branch name: `<type>/issue-<N>-<slug>`, where type is `feat`, `fix`, or `chore` (`feat/issue-3-impressum`). Drop `issue-<N>` when no issue exists.
 2. Run `script/bootstrap-worktree <branch-name>` from inside the checkout. For a stacked pull request, pass the parent feature branch as a second argument so the new branch forks from it instead of `HEAD`.
-3. Copy the worktree path to the clipboard with `pbcopy` and report it. The script prints it on the last line; it is `../sudhaus-engen-worktrees/<branch-name>`.
+3. Report the absolute path the script prints after `Worktree ready:`, and copy it to the clipboard when a clipboard tool is present (`pbcopy` on macOS, `wl-copy` or `xclip -selection clipboard` on Linux).
 
 The run ends green or not at all. `make review` is the last step, and any failure after the worktree exists removes that worktree and deletes its branch, so a failed run leaves no debris to clean up.
 
