@@ -58,17 +58,22 @@ require_image() {
   local tag="$2"
 
   log_info "Checking that ${IMAGE_REPOSITORY}:${tag} exists in ${registry}"
-  if ! az acr repository show \
-    --name "${registry}" \
-    --image "${IMAGE_REPOSITORY}:${tag}" \
-    --subscription "${AZ_SUBSCRIPTION_ID}" \
-    --only-show-errors \
-    --output none > /dev/null 2>&1; then
-    log_error "No image ${IMAGE_REPOSITORY}:${tag} in the registry ${registry}."
-    log_error "Run \"make image-push\" on that commit first."
-    log_error "The running revision is unchanged."
-    exit 1
-  fi
+  local lookup=0
+  acr_tag_exists "${registry}" "${IMAGE_REPOSITORY}" "${tag}" || lookup=$?
+  case ${lookup} in
+    0) ;;
+    3)
+      log_error "No image ${IMAGE_REPOSITORY}:${tag} in the registry ${registry}."
+      log_error "Run \"make image-push\" on that commit first."
+      log_error "The running revision is unchanged."
+      exit 1
+      ;;
+    *)
+      log_error "Could not query the registry ${registry}; az exited ${lookup}."
+      log_error "The running revision is unchanged."
+      exit 1
+      ;;
+  esac
 }
 
 wait_for_revision() {

@@ -111,6 +111,23 @@ require_session() {
   fi
 }
 
+# Reports whether a tag exists in an Azure Container Registry repository.
+# Exit status 0 means the tag exists and 3 means the registry confirmed it does
+# not. Any other status means the lookup itself failed, so the answer is
+# unknown and the caller must not treat it as absence.
+acr_tag_exists() {
+  local registry="$1"
+  local repository="$2"
+  local tag="$3"
+
+  az acr repository show \
+    --name "${registry}" \
+    --image "${repository}:${tag}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none > /dev/null 2>&1
+}
+
 terraform_output() {
   local name="$1"
   local value
