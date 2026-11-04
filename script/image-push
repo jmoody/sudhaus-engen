@@ -77,6 +77,18 @@ require_pushed_commit() {
   fi
 }
 
+tag_exists() {
+  local registry="$1"
+  local tag="$2"
+
+  az acr repository show \
+    --name "${registry}" \
+    --image "${IMAGE_REPOSITORY}:${tag}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none > /dev/null 2>&1
+}
+
 main() {
   while getopts "h-:" opt; do
     case ${opt} in
@@ -114,6 +126,15 @@ main() {
     --subscription "${AZ_SUBSCRIPTION_ID}" \
     --only-show-errors \
     --output none
+
+  # SHA tags are write-once. The Dockerfile builds on a mutable ubuntu base, so
+  # rebuilding a published SHA would replace the image that tag already names
+  # and silently break rolling back to it.
+  if tag_exists "${registry}" "${sha}"; then
+    log_info "${image} is already published; leaving it untouched"
+    log_info "Promote it with: make promote SHA=${sha}"
+    return 0
+  fi
 
   log_info "Building and pushing ${image} for ${IMAGE_PLATFORM}"
   docker buildx build \

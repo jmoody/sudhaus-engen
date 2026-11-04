@@ -51,13 +51,13 @@ Both scripts read the registry, app, and resource group from the Terraform outpu
 | `make image-push`        | `script/image-push` | Builds for `linux/amd64`, tags with the `HEAD` SHA, and pushes it          |
 | `make promote SHA=<sha>` | `script/promote`    | Points the app at that tag and waits for the new revision to report healthy |
 
-`image-push` refuses to build when the working tree has uncommitted changes or when `HEAD` is not on any branch at `origin`. Together these guarantee that every tag in the registry names a commit anyone can check out.
+`image-push` refuses to build when the working tree has uncommitted changes or when `HEAD` is not on any branch at `origin`. Together these guarantee that every tag in the registry names a commit anyone can check out. SHA tags are also write-once: if the tag already exists, `image-push` reports it and leaves the published image alone rather than rebuilding over it. The Dockerfile builds on a mutable `ubuntu` base, so an overwrite would quietly change what an already-deployed SHA means and break rolling back to it.
 
 `promote` checks that the tag exists in the registry before it touches the app, so promoting an unknown SHA leaves the running revision in place. It accepts any revision git understands and resolves it to a full SHA, so a short SHA from `git log --oneline` works. After the update it polls the new revision until `provisioningState` is `Provisioned`, `runningState` is `Running`, and `healthState` is `Healthy`, and exits non-zero if that does not happen within five minutes.
 
 ## Rollback
 
-Rollback is a promotion of an earlier git SHA: `make promote SHA=<earlier-sha>`. Every pushed SHA stays in the registry until it is deleted.
+Rollback is a promotion of an earlier git SHA: `make promote SHA=<earlier-sha>`. Every pushed SHA stays in the registry until it is deleted, and its tag is never rewritten, so an earlier SHA always restores the exact image that was deployed.
 
 ## Open points
 
