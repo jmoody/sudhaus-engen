@@ -90,6 +90,29 @@ derive_account_name() {
 }
 
 ensure_resource_group() {
+  local existing
+  existing="$(
+    az group show \
+      --subscription "${AZ_SUBSCRIPTION_ID}" \
+      --name "${RESOURCE_GROUP}" \
+      --query location \
+      --output tsv \
+      --only-show-errors 2> /dev/null || true
+  )"
+
+  # A resource group's location is fixed at creation, so a changed LOCATION
+  # would make az group create fail with an opaque InvalidResourceGroupLocation.
+  # Say what is wrong and what to do instead.
+  if [[ -n "${existing}" && "${existing}" != "${LOCATION}" ]]; then
+    log_error "Resource group ${RESOURCE_GROUP} already exists in ${existing}, not ${LOCATION}."
+    log_error "A resource group cannot change region, and a storage account cannot move in place."
+    log_error "If the backend holds no state yet, delete it and re-run:"
+    log_error "  az group delete --name ${RESOURCE_GROUP} --yes"
+    log_error "If it holds state, copy the '${CONTAINER}' container to a new ${LOCATION} account"
+    log_error "and repoint terraform/backend.hcl before re-running."
+    exit 1
+  fi
+
   log_info "Ensuring resource group ${RESOURCE_GROUP} in ${LOCATION}"
   az group create \
     --subscription "${AZ_SUBSCRIPTION_ID}" \
