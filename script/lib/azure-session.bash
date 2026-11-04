@@ -115,7 +115,11 @@ terraform_output() {
   local name="$1"
   local value
 
-  if ! value="$(terraform -chdir="${PROJECT_DIR}/${TF_ENV_DIR}" output -raw "${name}" 2> /dev/null)" \
+  # ARM_SUBSCRIPTION_ID pins the backend to the resolved subscription. Without
+  # it the azurerm backend falls back to the Azure CLI's active subscription,
+  # which AZ_SUBSCRIPTION_ID may deliberately override.
+  if ! value="$(ARM_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID}" \
+    terraform -chdir="${PROJECT_DIR}/${TF_ENV_DIR}" output -raw "${name}" 2> /dev/null)" \
     || [[ -z "${value}" ]]; then
     log_error "Could not read the Terraform output \"${name}\" from ${TF_ENV_DIR}."
     log_error "Run \"make tf-init\" and \"make apply\" first."

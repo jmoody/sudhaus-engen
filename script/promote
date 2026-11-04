@@ -61,6 +61,7 @@ require_image() {
   if ! az acr repository show \
     --name "${registry}" \
     --image "${IMAGE_REPOSITORY}:${tag}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
     --only-show-errors \
     --output none > /dev/null 2>&1; then
     log_error "No image ${IMAGE_REPOSITORY}:${tag} in the registry ${registry}."
@@ -87,6 +88,7 @@ wait_for_revision() {
       --name "${app}" \
       --resource-group "${resource_group}" \
       --revision "${revision}" \
+      --subscription "${AZ_SUBSCRIPTION_ID}" \
       --query "[properties.provisioningState, properties.runningState, properties.healthState]" \
       --only-show-errors \
       --output tsv 2> /dev/null)" || state=""
@@ -106,7 +108,7 @@ wait_for_revision() {
 
     if [[ "${provisioning}" == "Failed" || "${running}" == "Failed" || "${running}" == "Degraded" ]]; then
       log_error "Revision ${revision} failed to start (provisioning=${provisioning} running=${running} health=${health})."
-      log_error "Inspect it with: az containerapp revision show --name ${app} --resource-group ${resource_group} --revision ${revision}"
+      log_error "Inspect it with: az containerapp revision show --name ${app} --resource-group ${resource_group} --revision ${revision} --subscription ${AZ_SUBSCRIPTION_ID}"
       return 1
     fi
 
@@ -162,6 +164,7 @@ main() {
     --name "${app}" \
     --resource-group "${resource_group}" \
     --image "${image}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
     --query "properties.latestRevisionName" \
     --only-show-errors \
     --output tsv)"

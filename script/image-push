@@ -65,7 +65,7 @@ require_pushed_commit() {
   local sha="$1"
 
   log_info "Fetching origin to check that ${sha} is pushed"
-  if ! git -C "${PROJECT_DIR}" fetch --quiet origin; then
+  if ! git -C "${PROJECT_DIR}" fetch --prune --quiet origin; then
     log_error "Could not fetch origin."
     exit 1
   fi
@@ -109,7 +109,11 @@ main() {
   image="${login_server}/${IMAGE_REPOSITORY}:${sha}"
 
   log_info "Signing in to the registry ${registry}"
-  az acr login --name "${registry}" --only-show-errors --output none
+  az acr login \
+    --name "${registry}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none
 
   log_info "Building and pushing ${image} for ${IMAGE_PLATFORM}"
   docker buildx build \
