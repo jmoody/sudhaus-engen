@@ -28,17 +28,22 @@ usage() {
   cat << EOF
 Usage: $0 [OPTIONS] <branch-name> [base-ref]
 
-Create and provision a development git worktree for sudhaus-engen. The worktree is
-created at <parent-of-source>/<repo-basename>-worktrees/<branch-name> on a new
-branch <branch-name>, provisioned with the gitignored operational state that
-does not travel with a checkout (.env and the Azure CLI login session), then
-bootstrapped so it passes 'make review' immediately.
+Create and provision a development git worktree for sudhaus-engen. Every
+worktree is created alongside the main checkout, at
+<parent-of-main>/<repo-basename>-worktrees/<branch-name>, on a new branch
+<branch-name>, provisioned with the state that does not travel with a checkout
+(.env, the Azure CLI login session, and uncommitted ACE-FCA research, plan, and
+retro documents), then bootstrapped so it passes 'make review' immediately.
+
+Uncommitted ACE-FCA documents come from the checkout this runs in, so a
+stacked worktree inherits the plan being worked on. .env and the Azure session
+come from the main checkout, which is where every worktree is provisioned from.
 
 ARGUMENTS:
   <branch-name>  Name of the new branch and worktree directory (required).
-  [base-ref]     Ref to branch from (default: the source checkout's HEAD).
-                 Configurable to support stacked pull requests, where a
-                 worktree branches off a parent feature branch, not mainline.
+  [base-ref]     Ref to branch from (default: the HEAD of the checkout this
+                 runs in). Configurable to support stacked pull requests, where
+                 a worktree branches off a parent feature branch, not mainline.
 
 OPTIONS:
   -h, --help     Show this help message
@@ -89,12 +94,37 @@ provision_azure_session() {
   fi
 }
 
+copy_ace_fca_artifacts() {
+  local invoking_dir="$1"
+  local dest_dir="$2"
+
+  # The worktree is created from base-ref, so committed ACE-FCA documents are
+  # already there. Only uncommitted work in progress needs carrying over, and
+  # copying just that preserves the base-ref content of everything else.
+  local rel
+  while IFS= read -r -d '' rel; do
+    [[ -f "${invoking_dir}/${rel}" ]] || continue
+    mkdir -p "${dest_dir}/$(dirname "${rel}")"
+    cp "${invoking_dir}/${rel}" "${dest_dir}/${rel}"
+    log_info "Copied uncommitted ${rel}"
+  done < <(
+    {
+      git -C "${invoking_dir}" diff HEAD --name-only -z -- \
+        .github/ace-fca/research .github/ace-fca/plans .github/ace-fca/retros
+      git -C "${invoking_dir}" ls-files -z --others --exclude-standard -- \
+        .github/ace-fca/research .github/ace-fca/plans .github/ace-fca/retros
+    }
+  )
+}
+
 provision_worktree() {
   local source_dir="$1"
-  local dest_dir="$2"
+  local invoking_dir="$2"
+  local dest_dir="$3"
 
   provision_optional_file "${source_dir}/.env" "${dest_dir}/.env" ".env"
   provision_azure_session "${source_dir}" "${dest_dir}"
+  copy_ace_fca_artifacts "${invoking_dir}" "${dest_dir}"
 }
 
 main() {
@@ -116,7 +146,20 @@ main() {
     usage >&2
     exit 2
   fi
-  local base_ref="${2:-HEAD}"
+  local base_ref="${2:-}"
+
+  local invoking_dir
+  if ! invoking_dir="$(git rev-parse --show-toplevel)"; then
+    log_error "Not inside a git repository (could not resolve the invoking checkout)."
+    exit 1
+  fi
+
+  # Resolve an omitted base-ref against the invoking checkout. A bare 'HEAD'
+  # would resolve in the main checkout below, silently branching a stacked
+  # worktree off mainline instead of the parent branch being worked on.
+  if [[ -z "${base_ref}" ]]; then
+    base_ref="$(git -C "${invoking_dir}" rev-parse HEAD)"
+  fi
 
   local worktrees
   if ! worktrees="$(git worktree list --porcelain)"; then
@@ -155,7 +198,7 @@ main() {
   CLEANUP_ARMED=true
   trap cleanup_on_failure EXIT
 
-  provision_worktree "${source_dir}" "${dest_dir}"
+  provision_worktree "${source_dir}" "${invoking_dir}" "${dest_dir}"
 
   log_info "Running script/bootstrap in the new worktree"
   ( cd "${dest_dir}" && ./script/bootstrap )
