@@ -19,7 +19,7 @@ The `<suffix>` is the first six characters of the SHA-256 hash of the lowercased
 
 ## Resource providers
 
-Azure gates each resource type behind a subscription-scoped resource provider that must be registered before any resource of that type can be created. sudhaus-engen depends on five providers; `Microsoft.App` (Container Apps) gates the workload compute, and the other four back the container registry, Log Analytics, metrics, and DNS/custom-domain networking.
+Azure gates each resource type behind a subscription-scoped resource provider that must be registered before any resource of that type can be created. sudhaus-engen depends on six providers; `Microsoft.App` (Container Apps) gates the workload compute, and the other five back the container registry, Log Analytics, metrics, managed identities, and DNS/custom-domain networking.
 
 | Provider                        | Backs                            |
 | ------------------------------- | -------------------------------- |
@@ -27,9 +27,10 @@ Azure gates each resource type behind a subscription-scoped resource provider th
 | `Microsoft.ContainerRegistry`   | Azure Container Registry         |
 | `Microsoft.OperationalInsights` | Log Analytics                    |
 | `Microsoft.Insights`            | Azure Monitor metrics            |
+| `Microsoft.ManagedIdentity`     | User-assigned managed identities |
 | `Microsoft.Network`             | DNS zone and custom-domain certs |
 
-`script/register-providers` registers all five. Registration is subscription-scoped state that Terraform does not own, so it lives in a bash script alongside `script/tfstate-bootstrap` rather than in any `*.tf` file, which keeps a workload stack's `terraform destroy` from touching it and keeps `make review` credential-free. The script is idempotent, so re-running it is a no-op, and it registers the full set rather than only the currently-missing providers so that pointing it at a fresh subscription at production cutover reproduces the whole set. Run `make az-login` first, then:
+`script/register-providers` registers all six. Registration is subscription-scoped state that Terraform does not own, so it lives in a bash script alongside `script/tfstate-bootstrap` rather than in any `*.tf` file, which keeps a workload stack's `terraform destroy` from touching it and keeps `make review` credential-free. The script is idempotent, so re-running it is a no-op, and it registers the full set rather than only the currently-missing providers so that pointing it at a fresh subscription at production cutover reproduces the whole set. Run `make az-login` first, then:
 
 ```bash
 script/register-providers
@@ -37,9 +38,9 @@ script/register-providers
 
 ## Region
 
-Every sudhaus-engen Azure workload resource is pinned to **West Europe** (`westeurope`). Pinning to a single EU region is a compliance decision: it keeps all data in one EU geography and avoids international-transfer complexity. The remote-state account (`script/tfstate-bootstrap`) is created in the same region.
+Every sudhaus-engen Azure workload resource is pinned to **Sweden Central** (`swedencentral`). Pinning to a single EU region is a compliance decision: it keeps all data in one EU geography and avoids international-transfer complexity. The remote-state account (`script/tfstate-bootstrap`) is created in the same region.
 
-The pin is **explicit, never defaulted**. The value lives once in `region.tfvars` as `location = "westeurope"`, a committed non-secret data file shared by every root, exactly as `backend.hcl` is shared. Each root declares `variable "location" {}` with **no default** and wires `var.location` into every resource's `location` argument. Every plan or apply passes the shared value explicitly:
+The pin is **explicit, never defaulted**. The value lives once in `region.tfvars` as `location = "swedencentral"`, a committed non-secret data file shared by every root, exactly as `backend.hcl` is shared. Each root declares `variable "location" {}` with **no default** and wires `var.location` into every resource's `location` argument. Every plan or apply passes the shared value explicitly:
 
 ```bash
 terraform plan -var-file=../../region.tfvars
@@ -54,7 +55,7 @@ The tree seeds only the shared, root-agnostic artifacts. Workload stacks add the
 | Path                   | Purpose                                             |
 | ---------------------- | --------------------------------------------------- |
 | `backend.hcl`          | Partial azurerm backend config, shared by all roots |
-| `region.tfvars`        | Pinned region (`westeurope`), shared by all roots   |
+| `region.tfvars`        | Pinned region (`swedencentral`), shared by all roots |
 | `.gitignore`           | Keeps state, plans, and caches out of git           |
 | `modules/<component>/` | Reusable modules (added by workload stacks)         |
 | `envs/<env>/`          | Per-environment roots (added by workload stacks)    |
@@ -64,11 +65,13 @@ Each root declares an empty `backend "azurerm" {}` block and inherits the accoun
 
 ## The prod root
 
-`envs/prod/` is the first concrete workload root. Its state key is `prod.tfstate` and every resource it later owns is named `sudhaus-engen-prod-<resource>`, following the `<project>-<env>-<resource>` convention.
+`envs/prod/` is the first concrete workload root. Its state key is `prod.tfstate` and every resource it owns is named `sudhaus-engen-prod-<resource>`, following the `<project>-<env>-<resource>` convention. The Container Registry is the exception: its name must be globally unique and alphanumeric-only, so it reuses the state account's scheme and is `sudhausengenprodacr<suffix>`.
 
 The root pins the `hashicorp/azurerm` provider with `~> 5.0`. The subscription is an explicit input rather than a literal in any `*.tf` file, because Terraform must stay subscription-portable. The `subscription_id` variable has no default and is wired into the provider, so a missing value fails loudly instead of silently targeting the Azure CLI's active subscription; supply it out-of-band, either through `script/terraform` (which reads it from `.azure/config`) or with `export TF_VAR_subscription_id=<id>` before running `terraform`.
 
-At this bootstrap stage the root declares only its backend, provider, region pin, and the `common_tags` local carrying the required `service = "sudhaus-engen"` and `environment = "production"` tags. It provisions no resources yet. The Container Apps environment, container registry, Log Analytics workspace, DNS zone, and custom-domain resources described in ADR-0001 are added in later changes and will each merge `local.common_tags`.
+The root provisions the resource group, a Log Analytics workspace with 30-day retention, a Container Registry with admin credentials disabled, a user-assigned identity holding `AcrPull` on the registry, an `AcrPush` grant for the operator who runs the apply, a Container Apps environment, and the Container App. Every resource carries the required `service = "sudhaus-engen"` and `environment = "production"` tags through the `common_tags` local.
+
+The Container App runs in single-revision mode with `min_replicas = 1` and external ingress on port 8000, the port the site listens on. Its image is a placeholder, `mcr.microsoft.com/dotnet/samples:aspnetapp` with `ASPNETCORE_HTTP_PORTS=8000`, chosen because the target port is fixed at 8000 and that image honours a port setting. A `lifecycle` block ignores image changes, so promoting a real build with `az containerapp update --image` survives the next apply. The environment sends console and system logs to the workspace; there is no diagnostic setting for `ContainerAppHTTPLogs`, so no HTTP access logs are collected. The root outputs the resource group name, the registry login server, the app name, and the app's default host name.
 
 ## Running Terraform for the prod root
 
