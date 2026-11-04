@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# script/image-push builds the site image, tags it with the git commit SHA,
+# and pushes it to the prod Container Registry. It refuses to build from a
+# dirty working tree or from a commit that is not on the remote, so every
+# image in the registry names a commit anyone can check out. The build targets
+# linux/amd64 because Container Apps cannot run arm64 images. Promotion is a
+# separate step; see script/promote.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+
+# shellcheck source=script/lib/azure-session.bash
+. "${SCRIPT_DIR}/lib/azure-session.bash"
+
+readonly IMAGE_REPOSITORY="sudhaus-engen"
+readonly IMAGE_PLATFORM="linux/amd64"
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Build the site image for ${IMAGE_PLATFORM}, tag it with the git commit SHA of
+HEAD, and push it to the prod Container Registry. The image is never tagged
+"latest", so each promotion names an exact build. Requires an active Azure
+session; run "make az-login" first.
+
+The push is refused when the working tree has uncommitted changes or when HEAD
+is not on any branch at origin.
+
+OPTIONS:
+  -h, --help          Show this help message
+
+ENVIRONMENT:
+  AZ_SUBSCRIPTION_ID  Subscription ID. The environment overrides .env, which
+                       overrides defaults.subscription in .azure/config.
+
+EOF
+}
+
+require_docker() {
+  if ! command -v docker > /dev/null 2>&1; then
+    log_error "Docker is not installed."
+    log_error "Install it from https://docs.docker.com/get-docker/"
+    exit 1
+  fi
+
+  if ! docker buildx version > /dev/null 2>&1; then
+    log_error "docker buildx is not available."
+    log_error "Install the Buildx plugin from https://docs.docker.com/build/install-buildx/"
+    exit 1
+  fi
+}
+
+require_clean_tree() {
+  if [[ -n "$(git -C "${PROJECT_DIR}" status --porcelain)" ]]; then
+    log_error "The working tree has uncommitted changes."
+    log_error "Commit or stash them so the image tag names an exact commit."
+    exit 1
+  fi
+}
+
+require_pushed_commit() {
+  local sha="$1"
+
+  log_info "Fetching origin to check that ${sha} is pushed"
+  if ! git -C "${PROJECT_DIR}" fetch --quiet origin; then
+    log_error "Could not fetch origin."
+    exit 1
+  fi
+
+  if [[ -z "$(git -C "${PROJECT_DIR}" branch --remotes --contains "${sha}")" ]]; then
+    log_error "Commit ${sha} is not on any branch at origin."
+    log_error "Push it so the image tag names a commit anyone can check out."
+    exit 1
+  fi
+}
+
+main() {
+  while getopts "h-:" opt; do
+    case ${opt} in
+      h) usage; exit 0 ;;
+      -) case ${OPTARG} in
+           help) usage; exit 0 ;;
+           *) log_error "Unknown option: --${OPTARG}"; usage >&2; exit 2 ;;
+         esac ;;
+      *) log_error "Invalid option: -${OPTARG}"; usage >&2; exit 2 ;;
+    esac
+  done
+
+  require_docker
+  require_az
+  require_terraform
+
+  require_clean_tree
+
+  local sha
+  sha="$(git -C "${PROJECT_DIR}" rev-parse HEAD)"
+  require_pushed_commit "${sha}"
+
+  resolve_subscription
+  use_repo_azure_config
+  require_session
+
+  local login_server registry image
+  login_server="$(terraform_output registry_login_server)"
+  registry="${login_server%%.*}"
+  image="${login_server}/${IMAGE_REPOSITORY}:${sha}"
+
+  log_info "Signing in to the registry ${registry}"
+  az acr login --name "${registry}" --only-show-errors --output none
+
+  log_info "Building and pushing ${image} for ${IMAGE_PLATFORM}"
+  docker buildx build \
+    --platform "${IMAGE_PLATFORM}" \
+    --tag "${image}" \
+    --push \
+    "${PROJECT_DIR}"
+
+  log_info "Pushed ${image}"
+  log_info "Promote it with: make promote SHA=${sha}"
+}
+
+main "$@"
