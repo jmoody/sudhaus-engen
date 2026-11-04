@@ -389,6 +389,6 @@ Rollback: close the ten issues as "not planned". The plan changes nothing else.
 - Research: `.github/ace-fca/research/0001-site-rollout-requirements.md`
 - Work levels and rules: `docs/how-we-work.md`
 - Delivery model: `docs/deployment-with-scripts.md`
-- Hosting decision: `docs/adrs/0001-host-on-azure-container-apps-in-west-europe-with-terraform-and-docker.md`
+- Hosting decision: `docs/adrs/0001-host-on-azure-container-apps-in-sweden-central-with-terraform-and-docker.md`
 - Terraform rules: `.github/instructions/terraform.instructions.md`
 - Retrospective: `.github/ace-fca/retros/0001-site-rollout.md`

@@ -82,7 +82,7 @@ resource "azurerm_container_registry" "prod" {
 This is a service-layer Terraform project for a **public** repository. Two rules shape every root:
 
 1. **Subscription-portable.** The subscription id is an explicit input (`variable "subscription_id"`, no default), supplied through `TF_VAR_subscription_id` and never written as a literal in a `*.tf` or `*.tfvars` file. `script/terraform` reads it from `AZ_SUBSCRIPTION_ID`, `.env`, or `defaults.subscription` in the tracked `.azure/config`. The id is an identifier, not a credential, so it may be public. A missing value must fail loudly rather than silently target the Azure CLI's active subscription.
-2. **Region-pinned.** Every workload resource is pinned to West Europe (`westeurope`). The value lives once in the shared, committed `region.tfvars`; each root declares `variable "location"` with **no default** and passes `-var-file=../../region.tfvars` on every plan and apply, so a forgotten region fails loudly.
+2. **Region-pinned.** Every workload resource is pinned to Sweden Central (`swedencentral`). The value lives once in the shared, committed `region.tfvars`; each root declares `variable "location"` with **no default** and passes `-var-file=../../region.tfvars` on every plan and apply, so a forgotten region fails loudly.
 
 Remote state lives in a dedicated azurerm Storage backend (`sudhaus-engen-tfstate-rg` / `sudhausengentf<suffix>` / container `tfstate`, blob key `<env>.tfstate`), provisioned by `script/tfstate-bootstrap` and **never** managed by Terraform. Subscription-scoped resource-provider registration is likewise handled out-of-band by `script/register-providers`. Keeping both out of every `*.tf` file guarantees a `terraform destroy` cannot delete the state account or deregister providers, and keeps `make review` credential-free.
 
@@ -93,7 +93,7 @@ Shared, root-agnostic artifacts live at the top of `terraform/`; each environmen
 | Path            | Purpose                                                                                   |
 | --------------- | ----------------------------------------------------------------------------------------- |
 | `backend.hcl`   | Partial azurerm backend config (account, resource group, container), shared by all roots  |
-| `region.tfvars` | Pinned region (`westeurope`), shared by all roots                                      |
+| `region.tfvars` | Pinned region (`swedencentral`), shared by all roots                                   |
 | `.gitignore`    | Keeps state, plans, and provider caches out of git                                        |
 | `envs/<env>/`   | Per-environment root; supplies its own `key=<env>.tfstate` at init time                   |
 

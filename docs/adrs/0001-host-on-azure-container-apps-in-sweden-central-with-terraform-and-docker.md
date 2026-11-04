@@ -1,9 +1,9 @@
 ---
-title: Host on Azure Container Apps in West Europe, provisioned with Terraform and deployed as a Docker container
+title: Host on Azure Container Apps in Sweden Central, provisioned with Terraform and deployed as a Docker container
 description: Decide the hosting and deploy topology for the brewing-calendar website.
 ---
 
-# 1. Host on Azure Container Apps in West Europe, provisioned with Terraform and deployed as a Docker container
+# 1. Host on Azure Container Apps in Sweden Central, provisioned with Terraform and deployed as a Docker container
 
 Date: 2026-09-02
 Owner: @jmoody
@@ -15,6 +15,8 @@ Accepted
 Revised 2026-09-02: this ADR originally selected an Azure Virtual Machine. It was reconsidered the same day, before any infrastructure was provisioned, in favour of Azure Container Apps. The VM approach is retained below as alternative A with the reason it lost, so the reversal is not lost. No Terraform, container, or DNS work had been built against the VM decision, so this is a rewrite in place rather than a superseding record.
 
 Revised 2026-10-18: one setting changed and one rule was added before any infrastructure was provisioned. The app now runs with `min_replicas = 1` instead of scaling to zero, because Microsoft requires a running app for managed-certificate issuance and every automatic renewal, and zero replicas means no running app. The Log Analytics workspace stays, and a rule was added: logs must contain no personal data, so the application writes no request data and the ingress request log is not enabled. The scale-to-zero setting is retained below as alternative E. Two logging options considered the same day are recorded as alternatives F and G. As on 2026-09-02, no Terraform, container, or DNS work had been built against the earlier settings, so this is a rewrite in place rather than a superseding record.
+
+Revised 2026-11-04: the region changed from West Europe to Sweden Central. The first `terraform apply` failed because Azure refuses new resources in West Europe for tenants that have none there: "The selected region is currently not accepting new customers" ([locationineligible](https://aka.ms/locationineligible)). This is a deliberate Microsoft capacity-protection policy, and West Europe is the only region currently under it. Microsoft's documented remedies are to pick another region or to request remediation, the latter reserved for a clear need such as country-specific data sovereignty. The residency rationale below asks for a single EU geography, not for the Netherlands specifically, so Sweden Central satisfies it unchanged and the remediation request was not pursued. Sweden Central is also where this subscription's other project already runs, so the tenant is eligible there today. The region name is rewritten in place below, including in the alternatives, so the record describes one coherent region. As before, no Terraform, container, or DNS work had been provisioned against West Europe, so this is a rewrite in place rather than a superseding record. Had the site already been serving from West Europe, moving region would have been a superseding ADR with a migration plan, because it would have changed where live visitor data rests.
 
 ## Context
 
@@ -40,16 +42,16 @@ Because the audience is German, the choice must support a defensible EU data-res
 
 ## Decision
 
-We will host the service on Azure Container Apps (Consumption) in the West Europe region, provisioned and maintained with Terraform, and deployed as a Docker container, with at least one replica always running and logs that contain no personal data.
+We will host the service on Azure Container Apps (Consumption) in the Sweden Central region, provisioned and maintained with Terraform, and deployed as a Docker container, with at least one replica always running and logs that contain no personal data.
 
-1. Provision a Container Apps environment that sends logs to a Log Analytics workspace (`logs_destination = "log-analytics"`) with an explicit retention period, an Azure Container Registry for the image, and supporting resources with Terraform, pinned to West Europe.
+1. Provision a Container Apps environment that sends logs to a Log Analytics workspace (`logs_destination = "log-analytics"`) with an explicit retention period, an Azure Container Registry for the image, and supporting resources with Terraform, pinned to Sweden Central.
 2. Build the application as a Docker image, push it to the registry, and run it as a Container Apps app with `min_replicas = 1`, served over the platform's HTTPS ingress.
 3. Bind the registered custom domain to the app and secure it with an Azure-managed TLS certificate; manage DNS records with `azurerm_dns_zone`. Registering the domain itself is out of scope for Terraform and Azure (see Consequences).
-4. Enforce residency by configuration: pin the Container Apps environment, the registry, and the Log Analytics workspace to West Europe, and avoid geo-redundant storage that would replicate data to a paired region outside the chosen geography.
+4. Enforce residency by configuration: pin the Container Apps environment, the registry, and the Log Analytics workspace to Sweden Central, and avoid geo-redundant storage that would replicate data to a paired region outside the chosen geography.
 5. Keep Terraform state portable and access-restricted (a dedicated azurerm backend per `.github/instructions/terraform.instructions.md`) so the environment can be recreated on any machine by the sole developer.
 6. Use Azure tooling (Log Analytics, and Application Insights if added later) for monitoring the single production environment. Adding Application Insights needs its own review against the no-personal-data rule.
 7. Keep personal data out of the logs. The application writes no IP address, header, query string, or other value taken from a request. No diagnostic setting sends the `ContainerAppHTTPLogs` table to a workspace. After the first deployment, confirm that the workspace holds no rows in that table.
-8. Disclose Microsoft/Azure (West Europe) as a processor in the Datenschutzerklarung, backed by the Microsoft DPA and Standard Contractual Clauses. State that Microsoft also processes some technical data as an independent controller for its own business operations under the DPA.
+8. Disclose Microsoft/Azure (Sweden Central) as a processor in the Datenschutzerklarung, backed by the Microsoft DPA and Standard Contractual Clauses. State that Microsoft also processes some technical data as an independent controller for its own business operations under the DPA.
 9. State in the Datenschutzerklarung the retention period of the workspace and that the stored logs contain no personal data.
 
 ### Edge cases
@@ -62,7 +64,7 @@ We will host the service on Azure Container Apps (Consumption) in the West Europ
 - There is no OS or host to patch or harden; Microsoft owns the host layer. This removes the standing maintenance a VM would impose on the sole developer.
 - TLS certificates for the custom domain issue and renew automatically as Azure-managed certificates, so there is no Let's Encrypt automation to run or monitor. This directly satisfies the HTTPS-on-a-custom-domain requirement that motivated the decision.
 - One replica always runs, so the first request after an idle period has no cold-start latency and certificate renewals never meet a stopped app. The tradeoff is an always-on compute cost that scale to zero would avoid, even for a low-traffic site.
-- Compute and logs sit in West Europe (the Container Apps environment plus a region-pinned Log Analytics workspace), giving a defensible EU/German residency posture. The residual US-jurisdiction risk is unchanged by platform choice and is mitigated by disclosing Microsoft/Azure as a processor under the DPA and SCCs, a documentation obligation that must be kept current.
+- Compute and logs sit in Sweden Central (the Container Apps environment plus a region-pinned Log Analytics workspace), giving a defensible EU/German residency posture. The residual US-jurisdiction risk is unchanged by platform choice and is mitigated by disclosing Microsoft/Azure as a processor under the DPA and SCCs, a documentation obligation that must be kept current.
 - Console and system logs stay queryable for the retention period, so an incident can be investigated after it happens. The tradeoff is a workspace to provision, pin, and pay for, and a standing rule that no code path may log personal data. One log statement that writes a client IP, a header, or a query string would make the Datenschutzerklarung statement false. Only code review and the post-deployment check on `ContainerAppHTTPLogs` enforce the rule.
 - Without ingress request logs there are no per-request status codes or latencies to analyse. Any later request-level logging reopens the personal-data question.
 - Container Apps introduces platform-specific behaviour (revisions, ingress, scale rules) that is itself a lock-in surface; migrating off Container Apps later is more work than moving a plain container off a VM.
@@ -74,13 +76,13 @@ We will host the service on Azure Container Apps (Consumption) in the West Europ
 
 ### A. Azure Virtual Machine (originally selected)
 
-**How it works**: Provision a Terraform-managed Azure VM in West Europe, run the same Docker image on it, and terminate TLS with a reverse proxy (Caddy, Traefik, or nginx) issuing Let's Encrypt certificates against the custom domain.
+**How it works**: Provision a Terraform-managed Azure VM in Sweden Central, run the same Docker image on it, and terminate TLS with a reverse proxy (Caddy, Traefik, or nginx) issuing Let's Encrypt certificates against the custom domain.
 
 **Pros**:
 
 1. Gives maximum host-level control over the OS, networking, and request logging, which is directly valuable when learning the full stack is a goal in itself.
 2. Runs a plain container on a plain host with no managed-platform behaviours (revisions, ingress, scale rules) to learn or be constrained by, making it maximally portable off Azure later.
-3. Pins compute, disks, access logs, event content, and backups to West Europe just as cleanly as Container Apps, giving an equivalent EU residency posture.
+3. Pins compute, disks, access logs, event content, and backups to Sweden Central just as cleanly as Container Apps, giving an equivalent EU residency posture.
 
 **Rejected because** for a low-traffic single-developer site the ongoing cost of owning OS patching, host hardening, and self-managed TLS renewal outweighs the control benefit, and Container Apps still exercises a rich Azure and Terraform skill set while giving managed TLS for free.
 
@@ -161,7 +163,7 @@ We will host the service on Azure Container Apps (Consumption) in the West Europ
 **Pros**:
 
 1. Nothing is stored, so the Datenschutzerklarung needs no retention period and the logging requirement cannot be broken by a stray log statement.
-2. There is no workspace to provision, pin to West Europe, or pay for.
+2. There is no workspace to provision, pin to Sweden Central, or pay for.
 
 **Cons**:
 

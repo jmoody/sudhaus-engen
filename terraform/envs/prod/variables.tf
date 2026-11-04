@@ -1,4 +1,4 @@
-# The region is pinned to West Europe for every sudhaus-engen workload resource.
+# The region is pinned to Sweden Central for every sudhaus-engen workload resource.
 # It is declared with no default so a plan or apply that forgets
 # -var-file=../../region.tfvars fails loudly rather than silently falling back
 # to a provider default. See terraform/README.md, "Region".

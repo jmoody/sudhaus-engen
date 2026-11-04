@@ -14,7 +14,7 @@ PROJECT_DIR="$(git rev-parse --show-toplevel)"
 readonly PROJECT_DIR
 
 readonly RESOURCE_GROUP="sudhaus-engen-tfstate-rg"
-readonly LOCATION="westeurope"
+readonly LOCATION="swedencentral"
 readonly CONTAINER="tfstate"
 readonly ROLE="Storage Blob Data Contributor"
 readonly RBAC_TIMEOUT_SECONDS=300
