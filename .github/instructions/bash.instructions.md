@@ -53,7 +53,7 @@ main() {
            verbose) verbose=true ;;
            *) echo "Unknown option: --$OPTARG" >&2; exit 1 ;;
          esac ;;
-      *) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+      *) echo "Invalid option: -${OPTARG:-}" >&2; exit 1 ;;
     esac
   done
 }
@@ -67,6 +67,7 @@ main "$@"
 - Support both short (`-h`) and long (`--help`) options
 - Provide meaningful error messages for invalid options
 - Always include a help option
+- Expand `OPTARG` as `"${OPTARG:-}"` in the catch-all `*)` branch. In non-silent mode (an optstring that does not start with `:`) `getopts` unsets `OPTARG` for an unrecognised option, so a bare `$OPTARG` trips `set -u` and the script dies with `unbound variable` before it can print its own message or exit code.
 
 ## Variable handling
 
