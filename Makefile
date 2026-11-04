@@ -20,6 +20,10 @@ start: build
 stop:
 	@set -a; [ -f .env ] && . ./.env; set +a; lsof -a -t -i :$${PORT:-8000} -c sudhaus-engen | xargs -r kill
 
+restart:
+	$(MAKE) stop
+	$(MAKE) start
+
 clean:
 	-[ -x bin/golangci-lint ] && bin/golangci-lint cache clean
 	rm -rf bin
@@ -83,4 +87,4 @@ lint-fix: build
 
 review: build imports lint test
 
-.PHONY: bootstrap run start stop clean build imports test docker-build docker-run tidy update az-login tfstate-bootstrap register-providers tf-init plan apply terraform-lint shellcheck lint lint-fix review
+.PHONY: bootstrap run start stop restart clean build imports test docker-build docker-run tidy update az-login tfstate-bootstrap register-providers tf-init plan apply terraform-lint shellcheck lint lint-fix review

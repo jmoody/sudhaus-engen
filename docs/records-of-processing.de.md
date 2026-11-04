@@ -45,7 +45,7 @@ Ein Datenschutzbeauftragter ist nicht bestellt. Die Voraussetzungen des Art. 37 
 - Alle Verbindungen zur Website laufen über TLS mit einem von Azure Container Apps verwalteten Zertifikat.
 - Die Anwendung schreibt keine Anfragedaten in ein Protokoll. Die Regel steht in `.github/instructions/go.instructions.md` und in ADR 0001 und wird im Code-Review geprüft.
 - Die Ingress-Tabelle `ContainerAppHTTPLogs`, die Client-IP-Adressen führt, wird nicht in den Log Analytics Workspace geschrieben.
-- Der Log Analytics Workspace liegt in der Region Westeuropa und löscht nach 30 Tagen.
+- Der Log Analytics Workspace liegt in der Region Schweden (Sweden Central) und löscht nach 30 Tagen.
 - Die Seite setzt keine Cookies, bindet kein Analyse- oder Tracking-Werkzeug ein und lädt keine Ressource von einem fremden Server.
 - Die Azure-Umgebung wird ausschließlich vom Verantwortlichen verwaltet; die Infrastruktur ist in Terraform beschrieben und versioniert.
 

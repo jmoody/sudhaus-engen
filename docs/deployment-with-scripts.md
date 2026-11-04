@@ -5,7 +5,7 @@ description: Initial deployment model for sudhaus-engen, where the operator buil
 
 # Deployment with scripts
 
-Status: idea, not yet planned or implemented. This document records the deployment model chosen on 2026-10-18 so that a later plan can build on it. It follows [ADR 0001](adrs/0001-host-on-azure-container-apps-in-west-europe-with-terraform-and-docker.md), which puts the service on Azure Container Apps in West Europe.
+Status: idea, not yet planned or implemented. This document records the deployment model chosen on 2026-10-18 so that a later plan can build on it. It follows [ADR 0001](adrs/0001-host-on-azure-container-apps-in-sweden-central-with-terraform-and-docker.md), which puts the service on Azure Container Apps in Sweden Central.
 
 ## Model
 

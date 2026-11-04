@@ -45,7 +45,7 @@ No data protection officer is appointed. Neither Art. 37(1) GDPR nor § 38(1) BD
 - Every connection to the website runs over TLS with a certificate managed by Azure Container Apps.
 - The application writes no request data to a log. The rule is recorded in `.github/instructions/go.instructions.md` and in ADR 0001, and is checked in code review.
 - The ingress table `ContainerAppHTTPLogs`, which carries client IP addresses, is not written to the Log Analytics workspace.
-- The Log Analytics workspace sits in the West Europe region and deletes after 30 days.
+- The Log Analytics workspace sits in the Sweden Central region and deletes after 30 days.
 - The site sets no cookie, embeds no analytics or tracking tool, and loads no resource from a third-party server.
 - The Azure environment is administered by the controller alone, and the infrastructure is described and versioned in Terraform.
 

@@ -380,7 +380,7 @@ The following decisions will need to be made during planning:
 
 - `docs/how-we-work.md` - Epic, Batch, Task definitions and rules.
 - `docs/deployment-with-scripts.md` - Script-based delivery decision, steps, rollback, and open points.
-- `docs/adrs/0001-host-on-azure-container-apps-in-west-europe-with-terraform-and-docker.md` - Hosting decision, domain registration note, processor disclosure, follow-up work.
+- `docs/adrs/0001-host-on-azure-container-apps-in-sweden-central-with-terraform-and-docker.md` - Hosting decision, domain registration note, processor disclosure, follow-up work.
 - `internal/web/web.go:15-21,36,47-65` - Embedded templates, single route, index handler.
 - `internal/web/templates/index.html` - Only template; `lang="en"`, no stylesheet.
 - `internal/web/web_test.go` - Tests for front page, unknown path, non-GET method.

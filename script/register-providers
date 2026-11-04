@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # script/register-providers registers the Azure resource providers that
 # sudhaus-engen's infrastructure depends on: Container Apps, its container
-# registry, Log Analytics, Azure Monitor, and DNS/custom-domain networking.
+# registry, Log Analytics, Azure Monitor, managed identities, and
+# DNS/custom-domain networking.
 # The script registers every required provider rather than only the ones
 # currently missing so that pointing it at a fresh subscription at production
 # cutover reproduces the whole set. Provider registration is subscription-scoped
@@ -20,6 +21,7 @@ readonly REQUIRED_PROVIDERS=(
   "Microsoft.ContainerRegistry"
   "Microsoft.OperationalInsights"
   "Microsoft.Insights"
+  "Microsoft.ManagedIdentity"
   "Microsoft.Network"
 )
 
@@ -28,9 +30,9 @@ usage() {
 Usage: $(basename "$0") [OPTIONS]
 
 Register the Azure resource providers sudhaus-engen's infrastructure depends on
-(Container Apps, container registry, Log Analytics, Azure Monitor, and DNS
-networking), for subscription portability. Idempotent: safe to re-run. Requires
-an active Azure session; run "make az-login" first.
+(Container Apps, container registry, Log Analytics, Azure Monitor, managed
+identities, and DNS networking), for subscription portability. Idempotent: safe
+to re-run. Requires an active Azure session; run "make az-login" first.
 
 OPTIONS:
   -h, --help                  Show this help message
