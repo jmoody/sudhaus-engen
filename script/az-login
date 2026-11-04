@@ -62,7 +62,7 @@ main() {
            force) force=true ;;
            *) echo "Unknown option: --$OPTARG" >&2; usage >&2; exit 1 ;;
          esac ;;
-      *) echo "Invalid option: -$OPTARG" >&2; usage >&2; exit 1 ;;
+      *) echo "Invalid option: -${OPTARG:-}" >&2; usage >&2; exit 1 ;;
     esac
   done
 

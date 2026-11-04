@@ -126,7 +126,7 @@ main() {
            help) usage; exit 0 ;;
            *) log_error "Unknown option: --${OPTARG}"; usage >&2; exit 2 ;;
          esac ;;
-      *) log_error "Invalid option: -${OPTARG}"; usage >&2; exit 2 ;;
+      *) log_error "Invalid option: -${OPTARG:-}"; usage >&2; exit 2 ;;
     esac
   done
   shift $((OPTIND - 1))

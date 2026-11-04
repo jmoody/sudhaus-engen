@@ -46,10 +46,10 @@ The app pulls from the registry with its user-assigned identity and the `AcrPull
 
 Both scripts read the registry, app, and resource group from the Terraform outputs of `terraform/envs/prod`, so no name is written down twice. They share `script/lib/azure-session.bash` with `script/az-login` and `script/terraform`, which resolves the subscription id and points the Azure CLI at the repo-local `.azure/` session.
 
-| Command                     | Script             | What it does                                                                     |
-| --------------------------- | ------------------ | -------------------------------------------------------------------------------- |
-| `make image-push`           | `script/image-push` | Builds for `linux/amd64`, tags with the `HEAD` SHA, and pushes to the registry   |
-| `make promote SHA=<sha>`    | `script/promote`    | Points the app at that tag and waits for the new revision to report healthy      |
+| Command                  | Script              | What it does                                                               |
+| ------------------------ | ------------------- | -------------------------------------------------------------------------- |
+| `make image-push`        | `script/image-push` | Builds for `linux/amd64`, tags with the `HEAD` SHA, and pushes it          |
+| `make promote SHA=<sha>` | `script/promote`    | Points the app at that tag and waits for the new revision to report healthy |
 
 `image-push` refuses to build when the working tree has uncommitted changes or when `HEAD` is not on any branch at `origin`. Together these guarantee that every tag in the registry names a commit anyone can check out.
 
