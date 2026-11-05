@@ -149,8 +149,8 @@ resource "azurerm_container_app" "prod" {
 
   template {
     # min_replicas = 1 keeps the app out of scale-to-zero so the Azure-managed
-    # certificate added in a later change is never issued or renewed against a
-    # stopped app. See ADR-0001.
+    # certificate is never issued or renewed against a stopped app. See
+    # ADR-0001.
     min_replicas = 1
 
     container {
@@ -197,15 +197,98 @@ resource "azurerm_container_app" "prod" {
 # <project>-<env>-<resource> name, because a public DNS zone's name is the zone
 # it answers for.
 #
-# The zone holds no records yet; the apex A record and the asuid TXT record
-# arrive with the custom-domain binding. Creating the empty zone first is
-# deliberate and must happen before the registrar change: DENIC checks the new
-# name servers when a .de delegation is updated, and the update fails when the
-# zone does not exist on them yet. See "DNS and the INWX delegation" in
+# Creating the zone before the registrar change is deliberate: DENIC checks the
+# new name servers when a .de delegation is updated, and the update fails when
+# the zone does not exist on them yet. See "DNS and the INWX delegation" in
 # terraform/README.md.
 resource "azurerm_dns_zone" "prod" {
   name                = "sudhaus-engen.de"
   resource_group_name = azurerm_resource_group.prod.name
+
+  tags = local.common_tags
+}
+
+# The apex of sudhaus-engen.de. A zone apex cannot hold a CNAME, so it points
+# at the Container Apps environment's single static ingress address instead of
+# at the app's generated host name. Azure keeps that address for the life of
+# the environment.
+#
+# No CAA record accompanies it: the zone publishes none at all, which leaves
+# every public CA free to issue, including the DigiCert account behind the
+# Azure-managed certificate.
+resource "azurerm_dns_a_record" "apex" {
+  name                = "@"
+  zone_name           = azurerm_dns_zone.prod.name
+  resource_group_name = azurerm_resource_group.prod.name
+  ttl                 = 300
+  records             = [azurerm_container_app_environment.prod.static_ip_address]
+
+  tags = local.common_tags
+}
+
+# Proof that this subscription controls the domain. Azure resolves
+# asuid.sudhaus-engen.de and compares it with the app's verification id before
+# it accepts the custom domain, so this record has to be in place first.
+resource "azurerm_dns_txt_record" "asuid" {
+  name                = "asuid"
+  zone_name           = azurerm_dns_zone.prod.name
+  resource_group_name = azurerm_resource_group.prod.name
+  ttl                 = 300
+
+  record {
+    value = azurerm_container_app.prod.custom_domain_verification_id
+  }
+
+  tags = local.common_tags
+}
+
+# The custom domain and its Azure-managed certificate, split across two
+# resources on purpose.
+#
+# Section 4.2 of .github/ace-fca/research/0001-site-rollout-requirements.md
+# lists the combinations the pinned ~> 5.0 provider offers. Binding the host
+# name and the certificate in one step, by setting
+# container_app_environment_certificate_id here, needs a certificate that
+# already exists. HTTP validation cannot produce one first: the validating CA
+# fetches http://sudhaus-engen.de/.well-known/pki-validation/fileauth.txt from
+# the app, which only answers for the domain once the host name is bound. The
+# two resources would wait on each other.
+#
+# So the host name is added on its own, with no certificate arguments, and the
+# managed certificate is issued against it afterwards. Azure attaches the
+# issued certificate to the host name itself, outside Terraform, which is what
+# the ignore_changes below covers: without it every later plan would read
+# Azure's binding as drift and replace the custom domain.
+#
+# azurerm_container_app_environment_certificate is the remaining candidate, but
+# it uploads an operator-supplied PFX, which is the certificate automation
+# ADR 0001 set out to avoid.
+resource "azurerm_container_app_custom_domain" "prod" {
+  name             = azurerm_dns_zone.prod.name
+  container_app_id = azurerm_container_app.prod.id
+
+  # Neither record is an argument here, so the graph does not order them, and
+  # Azure rejects the binding while asuid does not resolve.
+  depends_on = [
+    azurerm_dns_a_record.apex,
+    azurerm_dns_txt_record.asuid,
+  ]
+
+  lifecycle {
+    ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
+  }
+}
+
+# HTTP is the validation method an apex domain gets; CNAME validation is for
+# subdomains. Issuance and every automatic renewal reach the app over the
+# custom domain, which is why the app holds min_replicas = 1.
+resource "azurerm_container_app_environment_managed_certificate" "prod" {
+  name                         = "sudhaus-engen-prod-cert"
+  container_app_environment_id = azurerm_container_app_environment.prod.id
+  subject_name                 = azurerm_dns_zone.prod.name
+  domain_control_validation    = "HTTP"
+
+  depends_on = [azurerm_container_app_custom_domain.prod]
 
   tags = local.common_tags
 }
