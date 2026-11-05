@@ -270,15 +270,9 @@ func TestServer_StaticFiles(t *testing.T) {
 		},
 		{
 			name:        "font",
-			path:        "/static/fonts/InconsolataNerdFontMono-Regular.ttf",
+			path:        "/static/fonts/Inconsolata.woff2",
 			status:      http.StatusOK,
-			contentType: "font/ttf",
-		},
-		{
-			name:        "bold font",
-			path:        "/static/fonts/InconsolataNerdFontMono-Bold.ttf",
-			status:      http.StatusOK,
-			contentType: "font/ttf",
+			contentType: "font/woff2",
 		},
 		{
 			name:   "unknown asset",

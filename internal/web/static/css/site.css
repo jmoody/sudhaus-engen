@@ -1,22 +1,16 @@
+/* One variable font file carries both weights. It is the Google Fonts build of Inconsolata,
+   subset to Latin, which covers every character the site uses. */
 @font-face {
-  font-family: "Inconsolata Nerd Font Mono";
-  src: url("/static/fonts/InconsolataNerdFontMono-Regular.ttf") format("truetype");
+  font-family: "Inconsolata";
+  src: url("/static/fonts/Inconsolata.woff2") format("woff2");
   font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Inconsolata Nerd Font Mono";
-  src: url("/static/fonts/InconsolataNerdFontMono-Bold.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 700;
+  font-weight: 400 700;
   font-display: swap;
 }
 
 :root {
   color-scheme: light;
-  font-family: "Inconsolata Nerd Font Mono", monospace;
+  font-family: "Inconsolata", monospace;
   color: #29251f;
   background: #f5f0e5;
   font-synthesis: none;

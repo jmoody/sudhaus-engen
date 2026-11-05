@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"mime"
 	"net"
 	"net/http"
 	"os"
@@ -49,6 +50,12 @@ type Server struct {
 func NewServer(logger *slog.Logger) (*Server, error) {
 	if logger == nil {
 		return nil, errors.New("logger is nil")
+	}
+	// net/http reads the media types of the host, and the runtime image carries no
+	// /etc/mime.types. Without this line the font is served as application/octet-stream there,
+	// although a development machine with a media type table serves it correctly.
+	if err := mime.AddExtensionType(".woff2", "font/woff2"); err != nil {
+		return nil, fmt.Errorf("registering the woff2 media type: %w", err)
 	}
 	layout, err := template.ParseFS(templateFS, "templates/layout.html")
 	if err != nil {

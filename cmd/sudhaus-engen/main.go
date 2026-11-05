@@ -18,11 +18,9 @@ const (
 	defaultPort       = "8000"
 	readHeaderTimeout = 5 * time.Second
 	readTimeout       = 15 * time.Second
-	// writeTimeout is an absolute deadline on the whole response, so it has to cover the
-	// largest static asset on a slow link: the embedded fonts are about 2.4 MB each.
-	writeTimeout    = 60 * time.Second
-	idleTimeout     = 60 * time.Second
-	shutdownTimeout = 10 * time.Second
+	writeTimeout      = 15 * time.Second
+	idleTimeout       = 60 * time.Second
+	shutdownTimeout   = 10 * time.Second
 )
 
 func main() {
