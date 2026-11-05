@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# script/bind-custom-domain attaches the Azure-managed certificate to the
+# custom domain. Terraform creates both, but cannot join them: the certificate
+# can only be issued once the host name is on the app ("Creating managed
+# certificate requires hostname added as a custom hostname to a container app
+# or route in environment"), so a custom domain that referenced the certificate
+# would sit in a dependency cycle with it. The prod root therefore adds the
+# host name unbound and ignores the binding fields, and this script performs
+# the binding Azure leaves at "Disabled".
+#
+# Run it once after the apply that creates the custom domain. It is idempotent,
+# so re-running it is a no-op, and certificate renewal does not need it again.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+
+# shellcheck source=script/lib/azure-session.bash
+. "${SCRIPT_DIR}/lib/azure-session.bash"
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") [OPTIONS]
+
+Bind the Azure-managed certificate to the custom domain of the prod Container
+App, so the site serves HTTPS. Terraform creates the host name and the
+certificate but cannot bind them, because the certificate cannot exist before
+the host name does. Requires an active Azure session; run "make az-login"
+first.
+
+The script is idempotent: when the domain already serves the certificate it
+reports that and exits without touching the app. When the domain serves some
+other certificate it rebinds to the one Terraform manages.
+
+OPTIONS:
+  -h, --help          Show this help message
+
+ENVIRONMENT:
+  AZ_SUBSCRIPTION_ID  Subscription ID. The environment overrides .env, which
+                       overrides defaults.subscription in .azure/config.
+
+EOF
+}
+
+# Echoes one field of the custom domain entry for the host name. An absent
+# host name and a field Azure has not set both render as an empty string. A
+# failed query is an error rather than an empty answer, so that a permission
+# or service problem is never mistaken for an unconfigured domain.
+custom_domain_field() {
+  local app="$1"
+  local resource_group="$2"
+  local hostname="$3"
+  local field="$4"
+  local value
+
+  if ! value="$(az containerapp show \
+    --name "${app}" \
+    --resource-group "${resource_group}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --query "properties.configuration.ingress.customDomains[?name=='${hostname}'] | [0].${field}" \
+    --only-show-errors \
+    --output tsv)"; then
+    log_error "Could not read the custom domains of ${app} in ${resource_group}."
+    return 1
+  fi
+
+  printf '%s\n' "${value}"
+}
+
+# ARM resource ids are case-insensitive, so compare them folded.
+same_resource_id() {
+  local left right
+
+  left="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
+  right="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+
+  [[ "${left}" == "${right}" ]]
+}
+
+main() {
+  while getopts "h-:" opt; do
+    case ${opt} in
+      h) usage; exit 0 ;;
+      -) case ${OPTARG} in
+           help) usage; exit 0 ;;
+           *) log_error "Unknown option: --${OPTARG}"; usage >&2; exit 2 ;;
+         esac ;;
+      *) log_error "Invalid option: -${OPTARG:-}"; usage >&2; exit 2 ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  if [[ $# -ne 0 ]]; then
+    log_error "This script takes no arguments."
+    usage >&2
+    exit 2
+  fi
+
+  require_az
+  require_terraform
+
+  resolve_subscription
+  use_repo_azure_config
+  require_session
+
+  local app resource_group environment hostname certificate_id
+  app="$(terraform_output container_app_name)"
+  resource_group="$(terraform_output resource_group_name)"
+  environment="$(terraform_output container_app_environment_name)"
+  hostname="$(terraform_output custom_domain_name)"
+  certificate_id="$(terraform_output managed_certificate_id)"
+
+  local binding bound_certificate
+  binding="$(custom_domain_field "${app}" "${resource_group}" "${hostname}" bindingType)"
+  bound_certificate="$(custom_domain_field "${app}" "${resource_group}" "${hostname}" certificateId)"
+
+  if [[ -z "${binding}" ]]; then
+    log_error "The host name ${hostname} is not on ${app}."
+    log_error "Run \"make apply\" first."
+    exit 1
+  fi
+
+  if [[ "${binding}" == "SniEnabled" ]] && same_resource_id "${bound_certificate}" "${certificate_id}"; then
+    log_info "${hostname} already serves ${certificate_id##*/}; nothing to do"
+    exit 0
+  fi
+
+  if [[ -n "${bound_certificate}" ]]; then
+    log_info "${hostname} currently serves ${bound_certificate##*/}; rebinding"
+  fi
+
+  log_info "Binding ${certificate_id##*/} to ${hostname} on ${app}"
+  az containerapp hostname bind \
+    --name "${app}" \
+    --resource-group "${resource_group}" \
+    --environment "${environment}" \
+    --hostname "${hostname}" \
+    --certificate "${certificate_id}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --only-show-errors \
+    --output none
+
+  binding="$(custom_domain_field "${app}" "${resource_group}" "${hostname}" bindingType)"
+  bound_certificate="$(custom_domain_field "${app}" "${resource_group}" "${hostname}" certificateId)"
+  if [[ "${binding}" != "SniEnabled" ]] || ! same_resource_id "${bound_certificate}" "${certificate_id}"; then
+    log_error "After the bind Azure reports binding ${binding:-absent} and certificate ${bound_certificate:-absent}."
+    exit 1
+  fi
+
+  log_info "${hostname} is bound; the site serves HTTPS at https://${hostname}"
+}
+
+main "$@"
