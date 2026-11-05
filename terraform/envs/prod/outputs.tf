@@ -41,7 +41,7 @@ output "custom_domain_name" {
   value       = azurerm_container_app_custom_domain.prod.name
 }
 
-output "managed_certificate_name" {
-  description = "Name of the Azure-managed certificate issued for the custom domain."
-  value       = azurerm_container_app_environment_managed_certificate.prod.name
+output "managed_certificate_id" {
+  description = "Resource id of the Azure-managed certificate issued for the custom domain."
+  value       = azurerm_container_app_environment_managed_certificate.prod.id
 }
