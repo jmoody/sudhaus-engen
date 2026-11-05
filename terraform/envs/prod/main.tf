@@ -188,3 +188,24 @@ resource "azurerm_container_app" "prod" {
 
   tags = local.common_tags
 }
+
+# Public DNS for sudhaus-engen.de. The zone takes no location argument: ARM
+# reports the type as "dnszones" with locations ["global"], so a public DNS
+# zone is a global resource and azurerm exposes no location on it.
+#
+# The zone name is the domain itself rather than the usual
+# <project>-<env>-<resource> name, because a public DNS zone's name is the zone
+# it answers for.
+#
+# The zone holds no records yet; the apex A record and the asuid TXT record
+# arrive with the custom-domain binding. Creating the empty zone first is
+# deliberate and must happen before the registrar change: DENIC checks the new
+# name servers when a .de delegation is updated, and the update fails when the
+# zone does not exist on them yet. See "DNS and the INWX delegation" in
+# terraform/README.md.
+resource "azurerm_dns_zone" "prod" {
+  name                = "sudhaus-engen.de"
+  resource_group_name = azurerm_resource_group.prod.name
+
+  tags = local.common_tags
+}

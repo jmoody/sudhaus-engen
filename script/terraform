@@ -3,7 +3,7 @@
 # It maps the repo-wide AZ_SUBSCRIPTION_ID onto Terraform's
 # TF_VAR_subscription_id (never committed), reuses the repo-local Azure session
 # under .azure/ that script/az-login establishes, and drives Terraform through
-# -chdir so init, plan, and apply always target terraform/envs/prod with the
+# -chdir so every subcommand targets terraform/envs/prod with the
 # shared backend config and pinned region. Sign-in is owned by script/az-login;
 # run "make az-login" first.
 
@@ -22,7 +22,7 @@ readonly PLAN_FILE="tf.plan"
 
 usage() {
   cat << EOF
-Usage: $(basename "$0") {init|plan|apply} [terraform args...]
+Usage: $(basename "$0") {init|plan|apply|output} [terraform args...]
 
 Drive Terraform for the prod workload root (${TF_ENV_DIR}). Requires an active
 Azure session; run "make az-login" first.
@@ -31,10 +31,12 @@ SUBCOMMANDS:
   init              terraform init with the shared backend and prod state key
   plan              terraform plan, saved to ${PLAN_FILE} (gitignored)
   apply             terraform apply of the saved ${PLAN_FILE}
+  output            terraform output, to re-read a value from the current state
 
 Run plan then apply so the applied changes are exactly the reviewed plan.
 Extra arguments are forwarded to Terraform, e.g.
   $(basename "$0") plan -target=azurerm_container_registry.prod
+  $(basename "$0") output dns_zone_name_servers
 
 ENVIRONMENT:
   AZ_SUBSCRIPTION_ID  Subscription ID, exported to Terraform as
@@ -48,7 +50,7 @@ main() {
 
   case "${subcommand}" in
     ""|-h|--help) usage; exit 0 ;;
-    init|plan|apply) shift ;;
+    init|plan|apply|output) shift ;;
     *)
       log_error "Unknown subcommand: ${subcommand}"
       usage >&2
@@ -87,6 +89,9 @@ main() {
         exit 1
       fi
       exec terraform -chdir="${TF_ENV_DIR}" apply "$@" "${PLAN_FILE}"
+      ;;
+    output)
+      exec terraform -chdir="${TF_ENV_DIR}" output "$@"
       ;;
   esac
 }

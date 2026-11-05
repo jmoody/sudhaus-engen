@@ -77,6 +77,8 @@ resource "azurerm_container_registry" "prod" {
 }
 ```
 
+Where a resource's name is itself an externally meaningful identifier, use that identifier rather than the convention. A public DNS zone is the case in this repo: `azurerm_dns_zone.prod` is named `sudhaus-engen.de`, because the zone's name is the domain it answers for.
+
 ## Project context
 
 This is a service-layer Terraform project for a **public** repository. Two rules shape every root:
@@ -156,7 +158,7 @@ make plan       # review; writes terraform/envs/prod/tf.plan
 make apply      # applies the saved tf.plan
 ```
 
-Each target forwards `ARGS` to Terraform, and `script/terraform {init|plan|apply}` can be called directly when finer control is needed. Override the subscription by setting `AZ_SUBSCRIPTION_ID` in the environment.
+Each target forwards `ARGS` to Terraform, and `script/terraform {init|plan|apply|output}` can be called directly when finer control is needed. Override the subscription by setting `AZ_SUBSCRIPTION_ID` in the environment.
 
 ## Validation
 
