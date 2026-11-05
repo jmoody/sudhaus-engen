@@ -3,13 +3,13 @@ date: 2026-11-02 22:53:11 CET
 retrospective_for: ".github/ace-fca/plans/0002-ace-fca-skill-migration.md"
 researcher: "GitHub Copilot"
 agent_llm: "claude-opus-5"
-git_commit: 6eebce6f7b9e47124dd8269adf2c90af92cc3c06
-branch: feat/dataschutz
+git_commit: bc61b8b1f1362e8373fedf93bd792830a1b4c8cc
+branch: feat/ace-fca-skills
 repository: sudhaus-engen
 topic: "Migrating ACE-FCA phase prompts to Copilot CLI skills Retrospective"
 tags: [retrospective, ace-fca, skills, copilot-cli, workflow]
 status: in-progress
-last_updated: 2026-11-02
+last_updated: 2026-11-05
 last_updated_by: "GitHub Copilot"
 ---
 
@@ -17,8 +17,8 @@ last_updated_by: "GitHub Copilot"
 
 **Date**: 2026-11-02 22:53:11 CET
 **Plan Document**: `.github/ace-fca/plans/0002-ace-fca-skill-migration.md`
-**Git Commit**: 6eebce6f7b9e47124dd8269adf2c90af92cc3c06
-**Branch**: feat/dataschutz
+**Git Commit**: bc61b8b1f1362e8373fedf93bd792830a1b4c8cc
+**Branch**: feat/ace-fca-skills
 
 This retrospective is created during planning and completed after implementation. Capture observations in real time with trigger phrases such as "add this to the retro".
 

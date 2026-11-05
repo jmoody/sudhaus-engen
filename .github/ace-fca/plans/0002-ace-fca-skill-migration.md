@@ -2,14 +2,14 @@
 date: 2026-11-02 22:53:11 CET
 researcher: "GitHub Copilot"
 agent_llm: "claude-opus-5"
-git_commit: 6eebce6f7b9e47124dd8269adf2c90af92cc3c06
-branch: feat/dataschutz
+git_commit: bc61b8b1f1362e8373fedf93bd792830a1b4c8cc
+branch: feat/ace-fca-skills
 repository: sudhaus-engen
 topic: "Migrating ACE-FCA phase prompts to Copilot CLI skills"
 tags: [plan, ace-fca, skills, copilot-cli, workflow]
 status: draft
 research_document: ".github/ace-fca/research/0002-mattpocock-skills-alignment.md"
-last_updated: 2026-11-02
+last_updated: 2026-11-05
 last_updated_by: "GitHub Copilot"
 ---
 
@@ -78,7 +78,7 @@ Convert the ACE-FCA phase prompts into gated, namespaced Copilot CLI project ski
 
 **Shared scripts.** `.github/ace-fca/scripts/` holds `archive-documents.sh`, `changed-files.sh`, `compact-mode-check.sh` with `compact-mode-check.bats`, and `generate-metadata.sh`. They are used by more than one phase and stay shared rather than moving into skill directories.
 
-**Repository state.** Branch `feat/dataschutz` at `6eebce6`, working tree clean apart from the untracked research document. This plan and its retrospective are untracked and are committed on their own branch.
+**Repository state.** Branch `feat/ace-fca-skills`, cut from `main` at `bc61b8b`. The research document, this plan, and its retrospective are committed there as the first commit; the implementation lands on the same branch. Tracking issue: https://github.com/jmoody/sudhaus-engen/issues/26.
 
 ## Out of scope
 
