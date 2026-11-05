@@ -81,11 +81,13 @@ The zone takes no `location`, because a public DNS zone is a global resource. It
 
 **Order matters.** Create the zone in Azure *before* touching anything at INWX. When a `.de` delegation is changed, DENIC checks the new name servers, and the change fails (INWX sends an `UPDATE FAILED` mail) if the zone does not exist on them yet.
 
+The first apply creates *only* the zone. The custom domain and the managed certificate both verify themselves through public DNS, which still answers from INWX until the delegation lands, so applying them before step 4 fails: Azure cannot resolve the `asuid` record it is looking for, however correct the record is inside Azure DNS.
+
 1. Create the zone and read its name servers:
 
    ```bash
    make az-login
-   make plan
+   make plan ARGS="-target=azurerm_dns_zone.prod"
    make apply
    script/terraform output dns_zone_name_servers
    ```
@@ -101,6 +103,16 @@ The zone takes no `location`, because a public DNS zone is a global resource. It
    ```
 
    The answer is the Azure name servers (`ns1-NN.azure-dns.com.` and siblings) once the change has propagated. Until then it is the INWX name servers (`ns.inwx.de.` and siblings), which is the expected answer rather than a failure.
+
+5. Apply the rest of the root, which now includes the records, the custom domain, and the certificate, and bind the certificate as described under "Custom domain and managed certificate" below:
+
+   ```bash
+   make plan
+   make apply
+   make bind-custom-domain
+   ```
+
+Steps 1 to 5 are the first-time delegation only. Once `sudhaus-engen.de` resolves from Azure, every later change is an ordinary `make plan` and `make apply`.
 
 DNSSEC is deliberately not configured. INWX's one-click automatic mode must not be used with external name servers, and signing on the Azure side has no azurerm resource today, so it would need a new provider dependency or a manual step plus a DS record entered by hand at INWX.
 
@@ -131,7 +143,7 @@ HTTP is the validation method for an apex domain, and both issuance and every au
 
 The zone publishes no `CAA` record, which leaves every public CA free to issue, including the DigiCert account behind the Azure-managed certificate. There is no `www` name and no redirect in the application.
 
-Issuance takes a few minutes, and `make apply` blocks until Azure finishes. The full sequence and its checks are:
+Issuance takes a few minutes, and `make apply` blocks until Azure finishes. On a zone that already resolves from Azure, the full sequence and its checks are:
 
 ```bash
 make plan
