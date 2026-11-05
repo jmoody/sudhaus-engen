@@ -108,22 +108,36 @@ latest_review_body() {
 # CCR reports findings against code that has not changed since the last review inside a
 # "previously missed issues" block in the review body. Those never become review threads,
 # so a thread-only check reports a clean loop while they are still outstanding.
+#
+# The block is a <details> whose summary counts the findings, and each finding is a nested
+# <details> inside it. Match the singular "issue" so that both "1 previously missed issue"
+# and "N previously missed issues" start the capture, and track the <details> depth so the
+# capture ends on the tag that closes the block rather than on a sibling section that may
+# or may not follow it.
 overview_findings() {
   local repo="$1"
   local pr="$2"
-  local body
+  local body zwsp
   if ! body="$(latest_review_body "${repo}" "${pr}")"; then
     return 1
   fi
   if [[ -z "${body}" ]]; then
     return 0
   fi
+  # CCR pads paths with zero-width spaces, which stops the printed location from being
+  # copied straight into an editor or a grep.
+  zwsp="$(printf '\342\200\213')"
   awk '
-    /previously missed issues/ { capture = 1 }
-    /resolved since last review/ { capture = 0 }
-    capture { print }
+    !capture && /previously missed issue/ { capture = 1; depth = 1; next }
+    capture {
+      opens = gsub(/<details/, "<details")
+      closes = gsub(/<\/details>/, "</details>")
+      depth += opens - closes
+      if (depth <= 0) { capture = 0; next }
+      print
+    }
   ' <<< "${body}" \
-    | sed -e 's|<picture>.*alt="\([A-Za-z]*\) severity".*</picture>|\1:|g' -e 's/<[^>]*>//g' \
+    | sed -e 's|<picture>.*alt="\([A-Za-z]*\) severity".*</picture>|\1:|g' -e 's/<[^>]*>//g' -e "s/${zwsp}//g" \
     | awk 'NF'
 }
 
