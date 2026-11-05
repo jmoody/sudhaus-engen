@@ -53,7 +53,7 @@ func TestServer_FrontPage(t *testing.T) {
 	// Each row is matched whole so that no part of a date can drift away from the beer
 	// beside it, and so that a visible component cannot disagree with the datetime.
 	for _, row := range []struct{ date, weekday, day, month, year, beer string }{
-		{"2026-11-06", "Freitag", "6.", "Nov", "2026", "Pils"},
+		{"2026-11-20", "Freitag", "20.", "Nov", "2026", "Pils"},
 		{"2026-12-04", "Freitag", "4.", "Dez", "2026", "Böckle"},
 		{"2027-01-08", "Freitag", "8.", "Jan", "2027", "Pils"},
 		{"2027-02-12", "Freitag", "12.", "Feb", "2027", "Böckle"},
