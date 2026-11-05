@@ -80,6 +80,9 @@ image-push:
 promote:
 	script/promote $(SHA)
 
+bind-custom-domain:
+	script/bind-custom-domain
+
 shellcheck:
 	@find script .github/skills .github/ace-fca/skills .github/workflows/scripts -type f -exec sh -c 'for f in "$$@"; do if head -1 "$$f" | grep -qE "^#!.*bash"; then echo "shellcheck $$f"; shellcheck -x "$$f" || exit 1; fi; done' sh {} +
 
@@ -93,4 +96,4 @@ lint-fix: build
 
 review: build imports lint test
 
-.PHONY: bootstrap run start stop restart clean build imports test docker-build docker-run tidy update az-login tfstate-bootstrap register-providers tf-init plan apply terraform-lint image-push promote shellcheck lint lint-fix review
+.PHONY: bootstrap run start stop restart clean build imports test docker-build docker-run tidy update az-login tfstate-bootstrap register-providers tf-init plan apply terraform-lint image-push promote bind-custom-domain shellcheck lint lint-fix review

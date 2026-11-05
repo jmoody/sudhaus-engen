@@ -249,16 +249,16 @@ resource "azurerm_dns_txt_record" "asuid" {
 # lists the combinations the pinned ~> 5.0 provider offers. Binding the host
 # name and the certificate in one step, by setting
 # container_app_environment_certificate_id here, needs a certificate that
-# already exists. HTTP validation cannot produce one first: the validating CA
-# fetches http://sudhaus-engen.de/.well-known/pki-validation/fileauth.txt from
-# the app, which only answers for the domain once the host name is bound. The
-# two resources would wait on each other.
+# already exists, and the certificate cannot exist first: ARM rejects it with
+# RequireCustomHostnameInEnvironment until the host name is on an app in the
+# environment. The two resources would sit in a dependency cycle.
 #
 # So the host name is added on its own, with no certificate arguments, and the
-# managed certificate is issued against it afterwards. Azure attaches the
-# issued certificate to the host name itself, outside Terraform, which is what
-# the ignore_changes below covers: without it every later plan would read
-# Azure's binding as drift and replace the custom domain.
+# managed certificate is issued against it afterwards. Azure records the host
+# name as bindingType "Disabled" and does not attach the certificate by
+# itself, so script/bind-custom-domain performs the one join Terraform cannot
+# express. ignore_changes keeps that out-of-band binding from reading as drift
+# and recreating the custom domain on the next plan.
 #
 # azurerm_container_app_environment_certificate is the remaining candidate, but
 # it uploads an operator-supplied PFX, which is the certificate automation

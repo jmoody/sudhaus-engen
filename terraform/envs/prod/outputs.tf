@@ -28,3 +28,20 @@ output "dns_zone_name_servers" {
   description = "Name servers Azure assigned to the sudhaus-engen.de zone, to be entered at INWX as the domain's external name servers."
   value       = azurerm_dns_zone.prod.name_servers
 }
+
+# The three values script/bind-custom-domain needs to attach the managed
+# certificate to the custom domain, which Terraform cannot do itself.
+output "container_app_environment_name" {
+  description = "Name of the Container Apps environment that holds the managed certificate."
+  value       = azurerm_container_app_environment.prod.name
+}
+
+output "custom_domain_name" {
+  description = "Custom domain bound to the Container App."
+  value       = azurerm_container_app_custom_domain.prod.name
+}
+
+output "managed_certificate_name" {
+  description = "Name of the Azure-managed certificate issued for the custom domain."
+  value       = azurerm_container_app_environment_managed_certificate.prod.name
+}

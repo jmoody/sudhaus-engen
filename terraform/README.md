@@ -71,7 +71,7 @@ The root pins the `hashicorp/azurerm` provider with `~> 5.0`. The subscription i
 
 The root provisions the resource group, a Log Analytics workspace with 30-day retention, a Container Registry with admin credentials disabled, a user-assigned identity holding `AcrPull` on the registry, an `AcrPush` grant for the operator who runs the apply, a Container Apps environment, the Container App, the public DNS zone for `sudhaus-engen.de` with its apex and verification records, and the custom domain with its Azure-managed certificate. Every resource carries the required `service = "sudhaus-engen"` and `environment = "production"` tags through the `common_tags` local.
 
-The Container App runs in single-revision mode with `min_replicas = 1` and external ingress on port 8000, the port the site listens on. Its image is a placeholder, `mcr.microsoft.com/dotnet/samples:aspnetapp` with `ASPNETCORE_HTTP_PORTS=8000`, chosen because the target port is fixed at 8000 and that image honours a port setting. A `lifecycle` block ignores image changes, so promoting a real build with `az containerapp update --image` survives the next apply. The environment sends console and system logs to the workspace; there is no diagnostic setting for `ContainerAppHTTPLogs`, so no HTTP access logs are collected. The root outputs the resource group name, the registry login server, the app name, the app's default host name, and the DNS zone's name servers.
+The Container App runs in single-revision mode with `min_replicas = 1` and external ingress on port 8000, the port the site listens on. Its image is a placeholder, `mcr.microsoft.com/dotnet/samples:aspnetapp` with `ASPNETCORE_HTTP_PORTS=8000`, chosen because the target port is fixed at 8000 and that image honours a port setting. A `lifecycle` block ignores image changes, so promoting a real build with `az containerapp update --image` survives the next apply. The environment sends console and system logs to the workspace; there is no diagnostic setting for `ContainerAppHTTPLogs`, so no HTTP access logs are collected. The root outputs the resource group name, the registry login server, the app name, the app's default host name, the DNS zone's name servers, and the environment, custom domain, and certificate names that `script/bind-custom-domain` reads.
 
 ## DNS and the INWX delegation
 
@@ -106,32 +106,43 @@ DNSSEC is deliberately not configured. INWX's one-click automatic mode must not 
 
 ## Custom domain and managed certificate
 
-`https://sudhaus-engen.de` is served by the Container App itself under an Azure-managed certificate, so no certificate automation runs on the operator's side. Four resources in the prod root carry it.
+`https://sudhaus-engen.de` is served by the Container App itself under an Azure-managed certificate, so no certificate automation runs on the operator's side. Four resources in the prod root carry it, and one script finishes the job.
 
 | Resource                                                     | Role                                                                       |
 | ------------------------------------------------------------ | -------------------------------------------------------------------------- |
 | `azurerm_dns_a_record.apex`                                  | Apex `A` record to the Container Apps environment's static ingress address |
 | `azurerm_dns_txt_record.asuid`                               | `asuid` `TXT` record holding the app's custom-domain verification id       |
-| `azurerm_container_app_custom_domain.prod`                   | Binds the host name `sudhaus-engen.de` to the app                          |
+| `azurerm_container_app_custom_domain.prod`                   | Puts the host name `sudhaus-engen.de` on the app, unbound                  |
 | `azurerm_container_app_environment_managed_certificate.prod` | Issues and renews the certificate, validated over HTTP                     |
 
 The apex is an `A` record rather than a `CNAME` because a zone apex cannot hold a `CNAME`; it points at the environment's single static ingress address, which Azure keeps for the life of the environment. Both DNS records exist before the host name is added, since Azure resolves `asuid.sudhaus-engen.de` and compares it with the app's verification id before accepting the domain. The custom domain declares that ordering with `depends_on`, because neither record is one of its arguments.
 
-The host name and the certificate are two resources rather than one binding. Supplying `container_app_environment_certificate_id` on the custom domain needs a certificate that already exists, and HTTP validation cannot produce one first: the validating CA fetches `http://sudhaus-engen.de/.well-known/pki-validation/fileauth.txt` from the app, which only answers for the domain once the host name is bound. Adding the host name alone and issuing the certificate against it afterwards breaks that cycle. Azure then attaches the issued certificate to the host name outside Terraform, so the custom domain ignores changes to `certificate_binding_type` and `container_app_environment_certificate_id`; without that, every later plan would read Azure's binding as drift and replace the resource.
+The host name and the certificate are two resources rather than one binding, and Terraform cannot join them. Supplying `container_app_environment_certificate_id` on the custom domain needs a certificate that already exists, and the certificate cannot be created first: ARM rejects it with `RequireCustomHostnameInEnvironment` until the host name is on an app in the environment. A custom domain that referenced the certificate would sit in a dependency cycle with it.
+
+So the apply adds the host name alone. Azure records it as `bindingType: Disabled` and does not attach the issued certificate by itself, so until the binding is made the site answers HTTP but resets the connection on HTTPS. `script/bind-custom-domain` performs that one join:
+
+```bash
+make bind-custom-domain
+```
+
+Run it once after the apply that creates the custom domain. It is idempotent, so re-running it is a no-op, and certificate renewal does not need it again. Because the binding is made outside Terraform, the custom domain ignores changes to `certificate_binding_type` and `container_app_environment_certificate_id`; without that, every later plan would read Azure's binding as drift and replace the resource.
 
 HTTP is the validation method for an apex domain, and both issuance and every automatic renewal reach the app over the custom domain. That is why the app runs with `min_replicas = 1`: a scaled-to-zero app cannot answer the validation request. The ingress sets `allow_insecure_connections = false`, so `http://sudhaus-engen.de` redirects to HTTPS.
 
-The zone publishes no `CAA` record, which leaves every public CA free to issue, including the one behind the Azure-managed certificate. There is no `www` name and no redirect in the application.
+The zone publishes no `CAA` record, which leaves every public CA free to issue, including the DigiCert account behind the Azure-managed certificate. There is no `www` name and no redirect in the application.
 
-The certificate is issued during `make apply`, and the apply blocks until Azure finishes. Afterwards, confirm the result:
+Issuance takes a few minutes, and `make apply` blocks until Azure finishes. The full sequence and its checks are:
 
 ```bash
+make plan
+make apply
+make bind-custom-domain
 curl -sS -o /dev/null -w '%{http_code}\n' https://sudhaus-engen.de
 curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' http://sudhaus-engen.de
 make plan
 ```
 
-The first returns `200`, the second a 3xx to the HTTPS URL, and the plan reports no changes.
+The first `curl` returns `200`, the second `301 https://sudhaus-engen.de/`, and the closing plan reports no changes.
 
 ## Running Terraform for the prod root
 
