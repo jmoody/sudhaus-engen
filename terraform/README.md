@@ -65,13 +65,44 @@ Each root declares an empty `backend "azurerm" {}` block and inherits the accoun
 
 ## The prod root
 
-`envs/prod/` is the first concrete workload root. Its state key is `prod.tfstate` and every resource it owns is named `sudhaus-engen-prod-<resource>`, following the `<project>-<env>-<resource>` convention. The Container Registry is the exception: its name must be globally unique and alphanumeric-only, so it reuses the state account's scheme and is `sudhausengenprodacr<suffix>`.
+`envs/prod/` is the first concrete workload root. Its state key is `prod.tfstate` and every resource it owns is named `sudhaus-engen-prod-<resource>`, following the `<project>-<env>-<resource>` convention. Two resources are exceptions. The Container Registry's name must be globally unique and alphanumeric-only, so it reuses the state account's scheme and is `sudhausengenprodacr<suffix>`. The public DNS zone is named `sudhaus-engen.de`, because a DNS zone's name is the domain it answers for.
 
 The root pins the `hashicorp/azurerm` provider with `~> 5.0`. The subscription is an explicit input rather than a literal in any `*.tf` file, because Terraform must stay subscription-portable. The `subscription_id` variable has no default and is wired into the provider, so a missing value fails loudly instead of silently targeting the Azure CLI's active subscription; supply it out-of-band, either through `script/terraform` (which reads it from `.azure/config`) or with `export TF_VAR_subscription_id=<id>` before running `terraform`.
 
-The root provisions the resource group, a Log Analytics workspace with 30-day retention, a Container Registry with admin credentials disabled, a user-assigned identity holding `AcrPull` on the registry, an `AcrPush` grant for the operator who runs the apply, a Container Apps environment, and the Container App. Every resource carries the required `service = "sudhaus-engen"` and `environment = "production"` tags through the `common_tags` local.
+The root provisions the resource group, a Log Analytics workspace with 30-day retention, a Container Registry with admin credentials disabled, a user-assigned identity holding `AcrPull` on the registry, an `AcrPush` grant for the operator who runs the apply, a Container Apps environment, the Container App, and the public DNS zone for `sudhaus-engen.de`. Every resource carries the required `service = "sudhaus-engen"` and `environment = "production"` tags through the `common_tags` local.
 
-The Container App runs in single-revision mode with `min_replicas = 1` and external ingress on port 8000, the port the site listens on. Its image is a placeholder, `mcr.microsoft.com/dotnet/samples:aspnetapp` with `ASPNETCORE_HTTP_PORTS=8000`, chosen because the target port is fixed at 8000 and that image honours a port setting. A `lifecycle` block ignores image changes, so promoting a real build with `az containerapp update --image` survives the next apply. The environment sends console and system logs to the workspace; there is no diagnostic setting for `ContainerAppHTTPLogs`, so no HTTP access logs are collected. The root outputs the resource group name, the registry login server, the app name, and the app's default host name.
+The Container App runs in single-revision mode with `min_replicas = 1` and external ingress on port 8000, the port the site listens on. Its image is a placeholder, `mcr.microsoft.com/dotnet/samples:aspnetapp` with `ASPNETCORE_HTTP_PORTS=8000`, chosen because the target port is fixed at 8000 and that image honours a port setting. A `lifecycle` block ignores image changes, so promoting a real build with `az containerapp update --image` survives the next apply. The environment sends console and system logs to the workspace; there is no diagnostic setting for `ContainerAppHTTPLogs`, so no HTTP access logs are collected. The root outputs the resource group name, the registry login server, the app name, the app's default host name, and the DNS zone's name servers.
+
+## DNS and the INWX delegation
+
+`sudhaus-engen.de` is registered at INWX and hosted on Azure DNS, as ADR 0001 decided. Terraform owns only the hosting: `azurerm_dns_zone.prod` in the prod root. The registration itself, and the name-server entry that points the domain at Azure, stay with the registrar and are an operator step.
+
+The zone takes no `location`, because a public DNS zone is a global resource. The zone starts empty on purpose; the apex A record and the `asuid` TXT record belong to the custom-domain binding, which is a later change.
+
+**Order matters.** Create the zone in Azure *before* touching anything at INWX. When a `.de` delegation is changed, DENIC checks the new name servers, and the change fails (INWX sends an `UPDATE FAILED` mail) if the zone does not exist on them yet.
+
+1. Create the zone and read its name servers:
+
+   ```bash
+   make az-login
+   make plan
+   make apply
+   script/terraform output dns_zone_name_servers
+   ```
+
+2. At INWX, open the domain and enter the Azure name servers under **Externe Nameserver**. At least two are required; enter all four that Azure assigned. Save the change.
+
+3. Wait. A changed `.de` delegation takes 3 to 48 hours to become fully active.
+
+4. Confirm the delegation from a public resolver:
+
+   ```bash
+   dig +short NS sudhaus-engen.de @8.8.8.8
+   ```
+
+   The answer is the Azure name servers (`ns1-NN.azure-dns.com.` and siblings) once the change has propagated. Until then it is the INWX name servers (`ns.inwx.de.` and siblings), which is the expected answer rather than a failure.
+
+DNSSEC is deliberately not configured. INWX's one-click automatic mode must not be used with external name servers, and signing on the Azure side has no azurerm resource today, so it would need a new provider dependency or a manual step plus a DS record entered by hand at INWX.
 
 ## Running Terraform for the prod root
 
@@ -84,7 +115,7 @@ make plan             # review; writes the plan to terraform/envs/prod/tf.plan
 make apply            # applies the saved tf.plan, so it runs exactly what was reviewed
 ```
 
-`make plan` always saves to `tf.plan` (gitignored via `*.plan`) and `make apply` applies that saved file, so the applied changes are exactly the reviewed plan rather than a fresh, possibly-drifted plan. Each target forwards `ARGS` to Terraform, and `script/terraform {init|plan|apply}` can be called directly when finer control is needed. `AZ_SUBSCRIPTION_ID` resolves in order from the environment, the repo-local gitignored `.env`, and `defaults.subscription` in the tracked `.azure/config`, so an explicit environment value always wins and the scripts fail loudly when none of the three sets it. To target another subscription, set `AZ_SUBSCRIPTION_ID` or change `defaults.subscription` in `.azure/config`.
+`make plan` always saves to `tf.plan` (gitignored via `*.plan`) and `make apply` applies that saved file, so the applied changes are exactly the reviewed plan rather than a fresh, possibly-drifted plan. Each target forwards `ARGS` to Terraform, and `script/terraform {init|plan|apply|output}` can be called directly when finer control is needed; `output` re-reads a value from the current state, for example `script/terraform output dns_zone_name_servers`. `AZ_SUBSCRIPTION_ID` resolves in order from the environment, the repo-local gitignored `.env`, and `defaults.subscription` in the tracked `.azure/config`, so an explicit environment value always wins and the scripts fail loudly when none of the three sets it. To target another subscription, set `AZ_SUBSCRIPTION_ID` or change `defaults.subscription` in `.azure/config`.
 
 ## Initialising a root by hand
 
