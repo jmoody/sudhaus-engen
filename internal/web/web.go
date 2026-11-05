@@ -9,9 +9,24 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"mime"
 	"net"
 	"net/http"
 	"os"
+)
+
+// Security headers set on every response. HSTS omits `preload` because removal from the preload
+// list is slow and hard to reverse. The content security policy needs no directive beyond
+// `default-src` because the site loads its stylesheet and fonts from its own origin and runs no
+// script. The referrer policy and the permissions policy both deny everything, because the site
+// needs neither outbound referrer information nor any device feature.
+const (
+	strictTransportSecurity = "max-age=31536000; includeSubDomains"
+	contentSecurityPolicy   = "default-src 'self'; frame-ancestors 'none'"
+	contentTypeOptions      = "nosniff"
+	referrerPolicy          = "no-referrer"
+	permissionsPolicy       = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), " +
+		"magnetometer=(), microphone=(), payment=(), usb=()"
 )
 
 //go:embed templates/*.html
@@ -35,6 +50,12 @@ type Server struct {
 func NewServer(logger *slog.Logger) (*Server, error) {
 	if logger == nil {
 		return nil, errors.New("logger is nil")
+	}
+	// net/http reads the media types of the host, and the runtime image carries no
+	// /etc/mime.types. Without this line the font is served as application/octet-stream there,
+	// although a development machine with a media type table serves it correctly.
+	if err := mime.AddExtensionType(".woff2", "font/woff2"); err != nil {
+		return nil, fmt.Errorf("registering the woff2 media type: %w", err)
 	}
 	layout, err := template.ParseFS(templateFS, "templates/layout.html")
 	if err != nil {
@@ -67,6 +88,24 @@ func parsePage(layout *template.Template, name string) (*template.Template, erro
 
 // Handler returns the HTTP handler that routes requests to the site's pages.
 func (s *Server) Handler() http.Handler {
+	return secureHeaders(s.routes())
+}
+
+// secureHeaders sets the site's security headers before next writes the response, so that they
+// reach error responses and static files as well as the rendered pages.
+func secureHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		header := w.Header()
+		header.Set("Strict-Transport-Security", strictTransportSecurity)
+		header.Set("Content-Security-Policy", contentSecurityPolicy)
+		header.Set("X-Content-Type-Options", contentTypeOptions)
+		header.Set("Referrer-Policy", referrerPolicy)
+		header.Set("Permissions-Policy", permissionsPolicy)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", s.handleIndex)
 	mux.HandleFunc("GET /impressum", s.handleImpressum)

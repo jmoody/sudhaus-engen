@@ -53,7 +53,7 @@ func TestServer_FrontPage(t *testing.T) {
 	// Each row is matched whole so that no part of a date can drift away from the beer
 	// beside it, and so that a visible component cannot disagree with the datetime.
 	for _, row := range []struct{ date, weekday, day, month, year, beer string }{
-		{"2026-11-06", "Freitag", "6.", "Nov", "2026", "Pils"},
+		{"2026-11-20", "Freitag", "20.", "Nov", "2026", "Pils"},
 		{"2026-12-04", "Freitag", "4.", "Dez", "2026", "Böckle"},
 		{"2027-01-08", "Freitag", "8.", "Jan", "2027", "Pils"},
 		{"2027-02-12", "Freitag", "12.", "Feb", "2027", "Böckle"},
@@ -270,15 +270,9 @@ func TestServer_StaticFiles(t *testing.T) {
 		},
 		{
 			name:        "font",
-			path:        "/static/fonts/InconsolataNerdFontMono-Regular.ttf",
+			path:        "/static/fonts/Inconsolata.woff2",
 			status:      http.StatusOK,
-			contentType: "font/ttf",
-		},
-		{
-			name:        "bold font",
-			path:        "/static/fonts/InconsolataNerdFontMono-Bold.ttf",
-			status:      http.StatusOK,
-			contentType: "font/ttf",
+			contentType: "font/woff2",
 		},
 		{
 			name:   "unknown asset",
@@ -298,6 +292,48 @@ func TestServer_StaticFiles(t *testing.T) {
 			if tt.contentType != "" {
 				require.Equal(t, tt.contentType, rec.Header().Get("Content-Type"))
 				require.NotEmpty(t, rec.Body.Bytes())
+			}
+		})
+	}
+}
+
+// securityHeaders lists the response headers the site promises on every response. The expected
+// values are literals, not values read back from the handler, so a change to the policy has to be
+// made here as well as in the code.
+func securityHeaders() map[string]string {
+	return map[string]string{
+		"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+		"Content-Security-Policy":   "default-src 'self'; frame-ancestors 'none'",
+		"X-Content-Type-Options":    "nosniff",
+		"Referrer-Policy":           "no-referrer",
+		"Permissions-Policy": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), " +
+			"magnetometer=(), microphone=(), payment=(), usb=()",
+	}
+}
+
+func TestServer_SecurityHeaders(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   string
+		status int
+	}{
+		{name: "page", path: "/", status: http.StatusOK},
+		{name: "static file", path: "/static/css/site.css", status: http.StatusOK},
+		{name: "not found", path: "/missing", status: http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+
+			newHandler(t).ServeHTTP(rec, req)
+
+			require.Equal(t, tt.status, rec.Code)
+			for name, want := range securityHeaders() {
+				t.Run(name, func(t *testing.T) {
+					require.Equal(t, want, rec.Header().Get(name))
+				})
 			}
 		})
 	}

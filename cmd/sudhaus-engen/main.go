@@ -17,6 +17,9 @@ import (
 const (
 	defaultPort       = "8000"
 	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 15 * time.Second
+	writeTimeout      = 15 * time.Second
+	idleTimeout       = 60 * time.Second
 	shutdownTimeout   = 10 * time.Second
 )
 
@@ -43,6 +46,9 @@ func run(logger *slog.Logger) error {
 		Addr:              ":" + port,
 		Handler:           site.Handler(),
 		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
