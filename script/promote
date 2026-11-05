@@ -1,0 +1,190 @@
+#!/usr/bin/env bash
+# script/promote points the prod Container App at an image that
+# script/image-push already pushed, then waits for the resulting revision to
+# come up healthy. The app runs in single-revision mode, so a promotion
+# replaces the running revision outright. A rollback is a promotion of an
+# earlier commit. The image tag is verified before the app is touched, so a
+# promotion of an unknown SHA leaves the running revision in place.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+
+# shellcheck source=script/lib/azure-session.bash
+. "${SCRIPT_DIR}/lib/azure-session.bash"
+
+readonly IMAGE_REPOSITORY="sudhaus-engen"
+readonly REVISION_TIMEOUT_SECONDS=300
+readonly REVISION_POLL_SECONDS=10
+
+usage() {
+  cat << EOF
+Usage: $(basename "$0") <sha>
+
+Promote the image tagged <sha> to the prod Container App and wait for the new
+revision to report healthy. Requires an active Azure session; run
+"make az-login" first.
+
+<sha> is a git commit SHA that script/image-push has already pushed. Any
+revision git understands is accepted and resolved to its full SHA, so a short
+SHA from "git log --oneline" works. Promoting an earlier SHA is the rollback
+path.
+
+OPTIONS:
+  -h, --help          Show this help message
+
+ENVIRONMENT:
+  AZ_SUBSCRIPTION_ID  Subscription ID. The environment overrides .env, which
+                       overrides defaults.subscription in .azure/config.
+
+EOF
+}
+
+resolve_sha() {
+  local requested="$1"
+  local sha
+
+  if sha="$(git -C "${PROJECT_DIR}" rev-parse --verify --quiet "${requested}^{commit}")"; then
+    printf '%s\n' "${sha}"
+    return 0
+  fi
+
+  printf '%s\n' "${requested}"
+}
+
+require_image() {
+  local registry="$1"
+  local tag="$2"
+
+  log_info "Checking that ${IMAGE_REPOSITORY}:${tag} exists in ${registry}"
+  local lookup=0
+  acr_tag_exists "${registry}" "${IMAGE_REPOSITORY}" "${tag}" || lookup=$?
+  case ${lookup} in
+    0) ;;
+    3)
+      log_error "No image ${IMAGE_REPOSITORY}:${tag} in the registry ${registry}."
+      log_error "Run \"make image-push\" on that commit first."
+      log_error "The running revision is unchanged."
+      exit 1
+      ;;
+    *)
+      log_error "Could not query the registry ${registry}; az exited ${lookup}."
+      log_error "The running revision is unchanged."
+      exit 1
+      ;;
+  esac
+}
+
+wait_for_revision() {
+  local app="$1"
+  local resource_group="$2"
+  local revision="$3"
+
+  local deadline=$((SECONDS + REVISION_TIMEOUT_SECONDS))
+  local state line provisioning running health
+  local -a fields
+
+  log_info "Waiting for revision ${revision} to report healthy"
+  while ((SECONDS < deadline)); do
+    # A JMESPath list rendered as tsv is one value per line, and a null field
+    # renders as "None", so the three lines are always present.
+    state="$(az containerapp revision show \
+      --name "${app}" \
+      --resource-group "${resource_group}" \
+      --revision "${revision}" \
+      --subscription "${AZ_SUBSCRIPTION_ID}" \
+      --query "[properties.provisioningState, properties.runningState, properties.healthState]" \
+      --only-show-errors \
+      --output tsv 2> /dev/null)" || state=""
+
+    fields=()
+    while IFS= read -r line; do
+      fields+=("${line}")
+    done <<< "${state}"
+
+    provisioning="${fields[0]-}"
+    running="${fields[1]-}"
+    health="${fields[2]-}"
+
+    if [[ "${provisioning}" == "Provisioned" && "${running}" == "Running" && "${health}" == "Healthy" ]]; then
+      return 0
+    fi
+
+    if [[ "${provisioning}" == "Failed" || "${running}" == "Failed" || "${running}" == "Degraded" ]]; then
+      log_error "Revision ${revision} failed to start (provisioning=${provisioning} running=${running} health=${health})."
+      log_error "Inspect it with: az containerapp revision show --name ${app} --resource-group ${resource_group} --revision ${revision} --subscription ${AZ_SUBSCRIPTION_ID}"
+      return 1
+    fi
+
+    log_info "provisioning=${provisioning:-unknown} running=${running:-unknown} health=${health:-unknown}"
+    sleep "${REVISION_POLL_SECONDS}"
+  done
+
+  log_error "Revision ${revision} was not healthy within ${REVISION_TIMEOUT_SECONDS}s."
+  return 1
+}
+
+main() {
+  while getopts "h-:" opt; do
+    case ${opt} in
+      h) usage; exit 0 ;;
+      -) case ${OPTARG} in
+           help) usage; exit 0 ;;
+           *) log_error "Unknown option: --${OPTARG}"; usage >&2; exit 2 ;;
+         esac ;;
+      *) log_error "Invalid option: -${OPTARG:-}"; usage >&2; exit 2 ;;
+    esac
+  done
+  shift $((OPTIND - 1))
+
+  if [[ $# -ne 1 ]]; then
+    log_error "Exactly one commit SHA is required."
+    usage >&2
+    exit 2
+  fi
+
+  require_az
+  require_terraform
+
+  local sha
+  sha="$(resolve_sha "$1")"
+
+  resolve_subscription
+  use_repo_azure_config
+  require_session
+
+  local login_server registry app resource_group image
+  login_server="$(terraform_output registry_login_server)"
+  app="$(terraform_output container_app_name)"
+  resource_group="$(terraform_output resource_group_name)"
+  registry="${login_server%%.*}"
+  image="${login_server}/${IMAGE_REPOSITORY}:${sha}"
+
+  require_image "${registry}" "${sha}"
+
+  log_info "Promoting ${image} to ${app}"
+  local revision
+  revision="$(az containerapp update \
+    --name "${app}" \
+    --resource-group "${resource_group}" \
+    --image "${image}" \
+    --subscription "${AZ_SUBSCRIPTION_ID}" \
+    --query "properties.latestRevisionName" \
+    --only-show-errors \
+    --output tsv)"
+
+  if [[ -z "${revision}" ]]; then
+    log_error "Could not determine the revision created by the update."
+    exit 1
+  fi
+
+  wait_for_revision "${app}" "${resource_group}" "${revision}"
+
+  local host
+  host="$(terraform_output container_app_default_host_name)"
+  log_info "Revision ${revision} is healthy"
+  log_info "Serving ${image} at https://${host}"
+}
+
+main "$@"
