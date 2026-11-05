@@ -303,6 +303,48 @@ func TestServer_StaticFiles(t *testing.T) {
 	}
 }
 
+// securityHeaders lists the response headers the site promises on every response. The expected
+// values are literals, not values read back from the handler, so a change to the policy has to be
+// made here as well as in the code.
+func securityHeaders() map[string]string {
+	return map[string]string{
+		"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+		"Content-Security-Policy":   "default-src 'self'; frame-ancestors 'none'",
+		"X-Content-Type-Options":    "nosniff",
+		"Referrer-Policy":           "no-referrer",
+		"Permissions-Policy": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), " +
+			"magnetometer=(), microphone=(), payment=(), usb=()",
+	}
+}
+
+func TestServer_SecurityHeaders(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   string
+		status int
+	}{
+		{name: "page", path: "/", status: http.StatusOK},
+		{name: "static file", path: "/static/css/site.css", status: http.StatusOK},
+		{name: "not found", path: "/missing", status: http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+
+			newHandler(t).ServeHTTP(rec, req)
+
+			require.Equal(t, tt.status, rec.Code)
+			for name, want := range securityHeaders() {
+				t.Run(name, func(t *testing.T) {
+					require.Equal(t, want, rec.Header().Get(name))
+				})
+			}
+		})
+	}
+}
+
 func TestServer_UnknownPath(t *testing.T) {
 	require := require.New(t)
 
