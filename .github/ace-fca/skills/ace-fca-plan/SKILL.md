@@ -1,6 +1,7 @@
 ---
-agent: 'agent'
-description: Planning phase of the ACE-FCA workflow.
+name: ace-fca-plan
+description: "Planning phase of the ACE-FCA workflow. Invoked only by an explicit /ace-fca-plan command from the user. Never select this skill on your own and never invoke it in response to a general request to plan, design, or break down work; entering an ACE-FCA phase is a human act."
+disable-model-invocation: true
 ---
 
 # Planning with GitHub Copilot
@@ -72,6 +73,39 @@ When creating the planning document, you MUST:
 3. This section MUST appear before any planning content or analysis
 4. Do NOT paraphrase, summarize, or modify the original prompt in any way
 
+## The plan document schema (CLOSED)
+
+A plan contains these sections, in this order, and **nothing else**. The schema is closed: no section outside it is permitted, however useful it seems while writing. Clutter is what a plan accumulates when its shape is left to the author, and no amount of cleanup afterwards is as effective as a shape that has no room for it.
+
+| Section                    | Holds                                                     | Required |
+| -------------------------- | --------------------------------------------------------- | -------- |
+| frontmatter                | metadata, research link, status                           | yes      |
+| `## Original Prompt`       | the originating prompt, verbatim                          | yes      |
+| `## Goal`                  | what the plan delivers, one or two sentences              | yes      |
+| `## Settled decisions`     | decisions as current truth, no rationale, no alternatives | yes      |
+| `## Starting state`        | verified facts and file paths the plan builds on          | yes      |
+| `## Out of scope`          | explicit non-goals                                        | yes      |
+| `## Implementation phases` | `### Phase N` with steps and success criteria             | yes      |
+| `## Verification`          | how completion is proven                                  | yes      |
+| `## Deliverable content`   | verbatim payload when the deliverable is text             | optional |
+| `## References`            | links only, no prose                                      | yes      |
+
+Three rules govern the content:
+
+- **`## Settled decisions` records outcomes, never the path to them.** Write the decision as current truth. Rejected alternatives, pros and cons lists, comparisons, and the rationale for choices already made do not appear. If a reader needs to know why, the research document is where that lives, and the plan does not route material there as a cleanup step.
+- **`## Starting state` holds verified facts only.** Every file path, line number, and count in it was produced by a search that was actually run, not recalled.
+- **One fact, one place.** A fact stated in two sections becomes two facts that disagree after the first edit.
+
+### Plan status values
+
+The frontmatter `status` field takes exactly one of three values:
+
+| Value      | Meaning                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------- |
+| `draft`    | Being written or revised. Open questions may remain. Not ready to implement.              |
+| `ready`    | Complete, verified by Step 8's sweep, and approved by the user. Implementation may begin. |
+| `complete` | Implemented and verified. The plan is now a historical record and is not rewritten.       |
+
 ## Initial Response
 
 When this command is invoked:
@@ -105,8 +139,8 @@ Then wait for the user's input.
 - Research documents
 - Related implementation plans
 - Any data files mentioned
-- **IMPORTANT**: Use the read_file tool WITHOUT limit/offset parameters to read entire files
-- **CRITICAL**: DO NOT use `runSubagent` before reading these files yourself in the main context
+- **IMPORTANT**: Use the `view` tool WITHOUT a view_range parameter to read entire files
+- **CRITICAL**: DO NOT use the `task` tool before reading these files yourself in the main context
 - **NEVER** read files partially - if a file is mentioned, read it completely
 
 #### Step 1.2 Conduct initial research to gather context
@@ -115,19 +149,19 @@ Before asking the user any questions, use available tools to research in paralle
 
 ##### For exploration
 
-- Use semantic_search to find all files related to the ticket/task
-- **Note**: Do NOT call semantic_search in parallel with other searches. Call semantic_search first, then other search tools can be called in parallel.
-- Use file_search with glob patterns to locate relevant files and configs
-- Use grep_search to find specific patterns or implementations
-- Use list_dir to explore directory structures and identify focus areas
-- Use `list_code_usages` to find all references to items being modified
+- Use `semantic_code_search` to find all files related to the ticket/task
+- **Note**: Do NOT call `semantic_code_search` in parallel with other searches. Call `semantic_code_search` first, then other search tools can be called in parallel.
+- Use `glob` to locate relevant files and configs
+- Use `grep` to find specific patterns or implementations
+- Use `glob` to explore directory structures and identify focus areas
+- Use `grep` narrowed by a file glob to find all references to items being modified
 - **EXCLUDE from searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
 
 ##### For documentation research
 
 - Search existing documentation in README files (excluding `.github/ace-fca/README.md`)
 - Look for historical context in `.github/ace-fca/plans/`, `.github/ace-fca/research/` directories
-- Use semantic_search to find relevant documentation across the workspace (excluding `.github/ace-fca/archives/**/*`)
+- Use `semantic_code_search` to find relevant documentation across the workspace (excluding `.github/ace-fca/archives/**/*`)
 - **EXCLUDE from searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
 
 These tools will help you:
@@ -139,7 +173,7 @@ These tools will help you:
 #### Step 1.3 Read all files identified by research
 
 - After using search tools, read ALL files they identified as relevant
-- Use read_file to examine them FULLY into the main context
+- Use `view` to examine them FULLY into the main context
 - This ensures you have complete understanding before proceeding
 
 #### Step 1.4 Analyze and verify understanding
@@ -175,27 +209,27 @@ After getting initial clarifications:
 
 - DO NOT just accept the correction
 - Use search tools again to verify the correct information
-- Use read_file to examine the specific files/directories they mention
+- Use `view` to examine the specific files and directories they mention
 - Only proceed once you've verified the facts yourself
 
 #### Step 2.2 Create a research todo list
 
-using manage_todo_list to track exploration tasks
+using the `sql` tool's `todos` table to track exploration tasks
 
 #### Step 2.3 Conduct comprehensive research using available tools
 
 ##### For deeper investigation
 
-- Use semantic_search to find more specific files and components
-- Use grep_search to understand details and patterns
-- Use file_search to locate similar work you can model after
-- Use list_dir to explore relevant directory structures
+- Use `semantic_code_search` to find more specific files and components
+- Use `grep` to understand details and patterns
+- Use `glob` to locate similar work you can model after
+- Use `glob` to explore relevant directory structures
 - **EXCLUDE from searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
 
 ##### For documentation research
 
 - Search existing documentation in `.github/ace-fca/plans/`, `.github/ace-fca/research/` directories (excluding `.github/ace-fca/README.md` and `.github/ace-fca/archives/**/*`)
-- Use semantic_search to find relevant historical context and decisions (excluding `.github/ace-fca/archives/**/*`)
+- Use `semantic_code_search` to find relevant historical context and decisions (excluding `.github/ace-fca/archives/**/*`)
 - **EXCLUDE from searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
 
 ##### Research strategy
@@ -206,7 +240,7 @@ using manage_todo_list to track exploration tasks
 - Read identified files completely to understand patterns and conventions
 - Look for integration points and dependencies
 - Find examples that demonstrate current patterns
-- **CRITICAL**: Do not call semantic_search in parallel with other searches
+- **CRITICAL**: Do not call `semantic_code_search` in parallel with other searches
 
 #### Step 2.4 Present findings and design options
 
@@ -228,19 +262,17 @@ Based on my research, here's what I found:
 Which approach aligns best with your vision?
 ```
 
-### Step 3: Plan Structure Development
+### Step 3: Phasing development
 
 Once aligned on approach:
 
-#### Step 3.1 Create initial plan outline
+#### Step 3.1 Propose the phasing
+
+The plan's sections are fixed by the closed schema above and are not up for discussion. What needs agreement is the phasing, so propose only that:
 
 ```
-Here's my proposed plan structure:
+Here's my proposed phasing:
 
-## Overview
-[1-2 sentence summary]
-
-## Implementation Phases:
 1. [Phase name] - [what it accomplishes]
 2. [Phase name] - [what it accomplishes]
 3. [Phase name] - [what it accomplishes]
@@ -248,7 +280,7 @@ Here's my proposed plan structure:
 Does this phasing make sense? Should I adjust the order or granularity?
 ```
 
-#### Step 3.2 Get feedback on structure
+#### Step 3.2 Get feedback on the phasing
 
 before writing details
 
@@ -258,17 +290,17 @@ before writing details
 
 **NEVER manually create YAML frontmatter for plan documents.**
 
-Generate metadata using the generate-metadata.sh script.
-Replace `<your-model-name>` with your actual model (e.g., "claude-opus-4.5", "gpt-4o"):
+Generate metadata using the generate-metadata.sh script. Replace `<your-model-name>` with your actual model (e.g., "claude-opus-4.5", "gpt-4o"):
 ```bash
 .github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"
 ```
 
-After structure approval:
+After phasing approval:
 
 #### Step 4.2 Write the plan
 
 to `.github/ace-fca/plans/000N-description.md`
+- **CRITICAL**: The plan follows the closed schema defined above. Write those sections and no others. Set `status: draft` until Step 8's sweep and user approval move it to `ready`.
 - Format: `000N-description.md` where:
   - 000N is extracted from the provided research document path (e.g., if research is `0014-feature.md`, plan uses `0014`)
   - If no research document provided, calculate next available sequential number as fallback
@@ -287,7 +319,7 @@ to `.github/ace-fca/plans/000N-description.md`
 #### Step 4.5 Gather metadata for the plan document
 
 - **CRITICAL**: Run the `.github/ace-fca/scripts/generate-metadata.sh` script to generate all metadata
-- Use run_in_terminal: `.github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"`
+- Use `bash`: `.github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"`
 - Copy the script output as the foundation for your document
 - Add the plan content below the frontmatter
 
@@ -309,8 +341,7 @@ to `.github/ace-fca/plans/000N-description.md`
 
 **NEVER manually create YAML frontmatter for retrospective documents.**
 
-Generate metadata using the generate-metadata.sh script.
-Replace `<your-model-name>` with your actual model (e.g., "claude-opus-4.5", "gpt-4o"):
+Generate metadata using the generate-metadata.sh script. Replace `<your-model-name>` with your actual model (e.g., "claude-opus-4.5", "gpt-4o"):
 ```bash
 .github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"
 ```
@@ -372,34 +403,13 @@ When presenting multiple issues, questions, or findings to the user:
 - Adjust approach
 - Clarify success criteria
 - Add/remove scope items
-- Use replace_string_in_file to update the plan based on feedback
+- Use `edit` to update the plan based on feedback
 
 #### Step 6.4 Continue refining
 
 until the user is satisfied
 
-### Step 7: Decision documentation review
-
-Before presenting the plan as final, review and remove unnecessary decision documentation:
-
-**Remove**:
-1. Pros/cons lists for rejected alternatives
-2. Detailed comparisons of approaches not chosen
-3. Historical context about why option X was rejected
-4. Extensive rationale for decisions already made
-5. Multiple options presented without clear selection
-6. Redundant list items (symptoms of other listed items)
-7. "Key Discoveries" sections (reference research doc instead)
-
-**Keep**:
-1. The chosen approach stated clearly
-2. Key constraints affecting implementation
-3. Design decisions informing how to proceed
-4. Edge cases from decision process needing handling
-
-**Process**: For each bloated section found, rewrite concisely focusing on implementation. Move removed context to research doc if valuable.
-
-### Step 8: Plan ambiguity review (INTERACTIVE)
+### Step 7: Plan ambiguity review (INTERACTIVE)
 
 Review the plan for implementation readiness. Present findings ONE AT A TIME and WAIT for human response before continuing.
 
@@ -412,14 +422,49 @@ Review the plan for implementation readiness. Present findings ONE AT A TIME and
 1. Identify first issue
 2. Present to human with location, issue description, and suggested fix
 
-#### Step 8.1 STOP and WAIT for human response
+#### Step 7.1 STOP and WAIT for human response
 
-4. Only after human responds, proceed to next issue
-5. Repeat until all issues reviewed
+3. Only after human responds, proceed to next issue
+4. Repeat until all issues reviewed
 
 **Output**: Add findings to retrospective under "ACE-FCA Improvements" → "Planning Prompt".
 
 **Skip condition**: For trivial changes (<50 lines, single file), abbreviated review is acceptable.
+
+### Step 8: Pre-finalisation verification sweep (MANDATORY)
+
+This runs last, on the text that will ship. Step 7 rewrites the plan, so verifying before it would verify a draft that no longer exists.
+
+Before the plan can move from `draft` to `ready`, it must survive a mechanical verification sweep. This step replaces the judgement-based self-review that preceded it. A self-review by the authoring session is the failure mode this step exists to avoid: the session that wrote the plan already believes it, so it re-reads instead of re-checking.
+
+**Delegate the sweep to a fresh subagent.** Use the `task` tool with a cold-read agent that has not seen the planning conversation. Give it the plan path and the three checks below. Its findings must be resolved before the plan reaches `ready`.
+
+**Check 1: every changed value is enumerated everywhere it lives.**
+
+For every value the plan changes (a path, a filename, a basename, a constant, a heading, a command, a tool name), search the repository for every file that holds it, and confirm the plan names each one. State the search that was run and its output.
+
+The failure this catches is a plan that lists three reference sites when the repository holds six. References that cite a **basename** rather than a path are invisible to a search for the directory, so search both forms:
+
+```bash
+grep -rn "path/to/the-file.md" --include=*.md .
+grep -rn "the-file.md" --include=*.md .
+```
+
+**Check 2: no fact is stated in more than one place.**
+
+Compare the plan's sections against each other. A fact that appears in two sections will drift when one is edited: a count, a file list, or a phase description restated in both a step and its success criterion becomes two facts that disagree. Collapse each duplicate to a single authoritative site and reference it from the other.
+
+**Check 3: every number in the plan was counted, not estimated.**
+
+For every count the plan states, re-run the search that produces it and compare. Miscounts are routine and survive proofreading, because a restated number reads as already verified.
+
+```bash
+grep -rnE "pattern" --include=*.md . | wc -l
+```
+
+**Resolution.** Present the subagent's findings ONE AT A TIME and WAIT for a human response on each. Record a summary in the retrospective under "ACE-FCA Improvements" → "Planning Prompt", answering why planning missed each finding.
+
+**Running a verification command is the step; asserting its result is not.** Every search named here is executed against the working tree and its output read. A success criterion the plan has never run is an assumption with a checkbox next to it.
 
 ## Important guidelines
 
@@ -453,7 +498,7 @@ Review the plan for implementation readiness. Present findings ONE AT A TIME and
 
 #### Track progress
 
-- Use manage_todo_list to track planning tasks
+- Use the `sql` tool's `todos` table to track planning tasks
 - Update todos as you complete research
 - Mark planning tasks complete when done
 
@@ -497,7 +542,8 @@ B) Keep current scope (explain why this complexity is necessary now)
 C) Split into multiple smaller plans
 ```
 
-**Scope Validation Checklist** (verify before presenting plan):
+**Scope Validation Checklist** - this is a **gate, not a document section**. Verify each item before presenting the plan. The checklist is something the plan passes through, and its output never appears in the plan: a plan does not contain a list of ticked scope boxes, because the schema has no section for one and a passed gate leaves no residue.
+
 - [ ] Every new item has clear justification in current requirements
 - [ ] No hypothetical "future needs" driving current implementation
 - [ ] No premature optimization or over-engineering
@@ -545,15 +591,15 @@ for comprehensive coverage
 #### Be systematic
 
 in your exploration:
-- Start with semantic_search for broad understanding
-- Use file_search for specific file patterns
-- Use grep_search for content details
-- Use read_file to examine content completely
+- Start with `semantic_code_search` for broad understanding
+- Use `glob` for specific file patterns
+- Use `grep` for content details
+- Use `view` to examine content completely
 - **EXCLUDE from searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
 
 #### Document findings
 
-as you discover them using manage_todo_list
+as you discover them using the `sql` tool's `todos` table
 
 #### Focus on relevant areas
 

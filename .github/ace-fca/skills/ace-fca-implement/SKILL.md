@@ -1,6 +1,7 @@
 ---
-agent: 'agent'
-description: Implementation phase of the ACE-FCA workflow.
+name: ace-fca-implement
+description: "Implementation phase of the ACE-FCA workflow. Invoked only by an explicit /ace-fca-implement command from the user. Never select this skill on your own and never invoke it in response to a general request to implement a plan, build a feature, or write code; entering an ACE-FCA phase is a human act."
+disable-model-invocation: true
 ---
 
 # Implement Plan
@@ -60,7 +61,7 @@ When things don't match the plan exactly, think about why and communicate clearl
 
 During implementation, ensure adherence to project standards:
 - **Go code standards**: Follow `.github/instructions/go.instructions.md`
-- **Bash scripting**: Follow `.github/instructions/bash-scripting.instructions.md`
+- **Bash scripting**: Follow `.github/instructions/bash.instructions.md`
 - **Markdown formatting**: Follow `.github/instructions/markdown.instructions.md`
 - **Domain-specific rules**: Reference applicable files in `.github/instructions/` as needed
 
@@ -175,7 +176,7 @@ The ACE-FCA methodology includes real-time retrospective updates through trigger
    - Missing elements → "What was missing"
    - General notes → "Implementation Notes" section
 3. Update `last_updated` and `last_updated_by` in frontmatter
-4. Use `replace_string_in_file` (or `multi_replace_string_in_file` for batch updates across multiple sections) to make the update
+4. Use `edit` (several `edit` calls in one response for batch updates across multiple sections) to make the update
 5. Continue with main implementation task
 
 ## Pre-Completion Verification Checklist
@@ -196,7 +197,7 @@ The ACE-FCA methodology includes real-time retrospective updates through trigger
   - Use `any` instead of `interface{}` for modern Go syntax
   - Follow naming conventions for both public and private functions
 - [ ] **Bash script compliance** (for `**/*.sh` files):
-  - Functions used for code organization (see bash-scripting.instructions.md)
+  - Functions used for code organization (see bash.instructions.md)
   - Proper error handling with `set -euo pipefail`
 - [ ] **Markdown compliance** (for `**/*.md` files):
   - Sentence case headings (see markdown.instructions.md)
@@ -228,9 +229,9 @@ The ACE-FCA methodology includes real-time retrospective updates through trigger
 After implementing a phase:
 - Run the success criteria checks
 - Fix any issues before proceeding
-- Use `get_errors` to verify no issues were introduced by your changes
+- Use `bash` to run `make build` and `make lint` and verify no issues were introduced by your changes
 - Update your progress in both the plan and your todos
-- Check off completed items in the plan file itself using `replace_string_in_file`
+- Check off completed items in the plan file itself using `edit`
 
 Don't let verification interrupt your flow - batch it at natural stopping points.
 
@@ -246,7 +247,7 @@ After completing implementation, review the modified content for quality issues:
 5. Style guide violations (`.github/instructions/*.instructions.md`)
 6. Bad comments (past state references, redundant explanations)
 
-**Scope**: Only review content modified in this implementation (use `get_changed_files`).
+**Scope**: Only review content modified in this implementation (use `.github/ace-fca/scripts/changed-files.sh`).
 
 **Severity classification**:
 - :red_circle: Critical: Fix before merge
@@ -254,7 +255,7 @@ After completing implementation, review the modified content for quality issues:
 - :green_circle: Nice-to-have: Future improvement
 
 **Process**:
-1. Use `get_changed_files` to identify modified files
+1. Use `.github/ace-fca/scripts/changed-files.sh` to identify modified files
 2. Review each modified file for the issues above
 3. Present findings ONE AT A TIME
 4. **STOP and WAIT for human response** before continuing
@@ -268,7 +269,7 @@ When something isn't working as expected:
 - Consider if the codebase has evolved since the plan was written
 - Present the mismatch clearly and ask for guidance
 
-Use `runSubagent` sparingly - mainly for targeted research or exploring unfamiliar territory.
+Use the `task` tool sparingly - mainly for targeted research or exploring unfamiliar territory.
 
 ## Resuming Work
 

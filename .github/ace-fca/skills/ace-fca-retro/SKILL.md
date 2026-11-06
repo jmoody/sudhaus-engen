@@ -1,6 +1,7 @@
 ---
-agent: 'agent'
-description: Retrospective phase for ACE-FCA implementations.
+name: ace-fca-retro
+description: "Retrospective phase of the ACE-FCA workflow. Invoked only by an explicit /ace-fca-retro command from the user. Never select this skill on your own and never invoke it in response to a general request to write a retrospective or reflect on finished work; entering an ACE-FCA phase is a human act."
+disable-model-invocation: true
 ---
 
 # Retrospective Analysis with GitHub Copilot
@@ -9,7 +10,7 @@ description: Retrospective phase for ACE-FCA implementations.
 
 - **Retrospective phase focuses on analysis, feedback, and learning capture**
 - **Your role is to analyze what happened and provide actionable improvement recommendations**
-- **This is the final phase of ACE-FCA: Research → Plan → Refine → Implement → Retrospective**
+- **This is the final phase of ACE-FCA: Research → Plan → Implement → Post-Review → Retrospective**
 
 ## CRITICAL: Temporary file locations
 
@@ -54,12 +55,12 @@ I'll analyze the completed work and provide comprehensive feedback for improving
 - Completed plan document
 - Existing retrospective document (if any)
 - Any referenced implementation files or results
-- **IMPORTANT**: Use read_file tool WITHOUT limit/offset parameters
+- **IMPORTANT**: Use the `view` tool WITHOUT a view_range parameter
 - **CRITICAL**: Read these files completely before analysis
 
 #### Review implementation changes
 
-- Use `get_changed_files` to review what was actually modified during implementation, comparing actual changes to planned changes
+- Use `.github/ace-fca/scripts/changed-files.sh` to review what was actually modified during implementation, comparing actual changes to planned changes
 
 #### Analyze the completed work
 
@@ -73,8 +74,8 @@ I'll analyze the completed work and provide comprehensive feedback for improving
 The pull request has been through the Copilot Code Review (CCR) loop, so every CCR thread is now resolved. Capture the full record and feed each miss back into the local review prompts so future cycles catch that class of defect before push:
 
 1. Run `.github/skills/ccr-loop/scripts/ccr-loop.sh capture <pr>`; it prints every CCR-authored thread (resolved and unresolved) as JSON lines. Embed that output verbatim in the retrospective under `## What the local review missed` → `### CCR findings`. When capture reports no threads, record "No CCR findings this cycle." and skip the remaining sub-steps.
-2. Under `### Local-gate gaps and fixes`, map each finding to the gap in the local review that let it through: name the check in `.github/ace-fca/prompts/code-review.prompt.md` and/or `.github/ace-fca/prompts/post-implementation.prompt.md` that should have caught it (or note that no local check covers this class yet).
-3. **Curate and improve**: for each finding the local review missed, add a generalized, deduped check to the appropriate canonical prompt (`.github/ace-fca/prompts/code-review.prompt.md` and/or `.github/ace-fca/prompts/post-implementation.prompt.md`). Generalize the specific miss into a reusable rule rather than an over-specific one-off, and dedupe against existing bullets before adding. Edit only the canonical `.github/ace-fca/prompts/` files; the `.github/prompts/` copies are symlinks. These prompt edits land in the same pull request as the retrospective.
+2. Under `### Local-gate gaps and fixes`, map each finding to the gap in the local review that let it through: name the check in `.github/ace-fca/skills/ace-fca-code-review/SKILL.md` and/or `.github/ace-fca/skills/ace-fca-post-implementation/SKILL.md` that should have caught it (or note that no local check covers this class yet).
+3. **Curate and improve**: for each finding the local review missed, add a generalized, deduped check to the appropriate canonical skill (`.github/ace-fca/skills/ace-fca-code-review/SKILL.md` and/or `.github/ace-fca/skills/ace-fca-post-implementation/SKILL.md`). Generalize the specific miss into a reusable rule rather than an over-specific one-off, and dedupe against existing bullets before adding. Edit only the canonical files under `.github/ace-fca/skills/`; the entries in `.github/skills/` are directory symlinks. These skill edits land in the same pull request as the retrospective.
 
 ### Step 2: User Feedback Analysis & Response
 
@@ -86,7 +87,7 @@ The pull request has been through the Copilot Code Review (CCR) loop, so every C
 
 #### Provide specific recommendations for
 
-- **ACE-FCA prompt improvements**: Specific updates to research-prompt.md, planning-prompt.md, implement-plan-prompt.md
+- **ACE-FCA skill improvements**: Specific updates to `ace-fca-research`, `ace-fca-plan`, `ace-fca-implement`
 - **.github/instructions updates**: Improvements to instruction files based on implementation experience
 - **Codebase architectural improvements**: Suggestions based on implementation challenges
 - **Process workflow enhancements**: Better approaches for future similar work
@@ -228,7 +229,7 @@ Generate metadata using the generate-metadata.sh script. Replace `<your-model-na
 #### Gather metadata for the retrospective document
 
 - **CRITICAL**: Run the `.github/ace-fca/scripts/generate-metadata.sh` script to generate all metadata
-- Use run_in_terminal: `.github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"`
+- Use `bash`: `.github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"`
 - Copy the script output as the foundation for your document
 - Add the retrospective content below the frontmatter
 
@@ -238,7 +239,7 @@ Generate metadata using the generate-metadata.sh script. Replace `<your-model-na
 
 - Review effectiveness of research → plan → implement flow
 - Identify friction points in ACE-FCA process
-- Recommend specific improvements to prompt instructions
+- Recommend specific improvements to skill instructions
 - Suggest new trigger phrases or workflow enhancements
 
 #### Decision record creation (when applicable)
@@ -303,7 +304,7 @@ last_updated_by: "GitHub Copilot"
 [Analysis of user's feedback about agent performance]
 
 ### Recommendations for Agent Improvement
-[Specific improvements to ACE-FCA prompts and process]
+[Specific improvements to ACE-FCA skills and process]
 
 ### Feedback for User
 [Analysis of user's self-reflection and suggestions for improvement]
@@ -362,7 +363,7 @@ The retrospective should achieve:
 
 1. **User feels heard and understood** in their feedback
 2. **Concrete recommendations** for improving ACE-FCA process
-3. **Identification of systemic improvements** to prompts/instructions
+3. **Identification of systemic improvements** to skills/instructions
 4. **Creative elements** that make retrospectives engaging rather than tedious
 5. **Learning capture** that improves future development cycles
 

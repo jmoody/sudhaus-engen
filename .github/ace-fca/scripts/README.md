@@ -68,7 +68,7 @@ The script:
 
 ## changed-files.sh
 
-Lists the files changed on the current branch relative to a base branch (`git diff BASE...HEAD` against the merge-base). Used to scope the local `code-review.prompt.md` pass to just the committed changes on the branch.
+Lists the files changed on the current branch relative to a base branch (`git diff BASE...HEAD` against the merge-base). Used to scope the local `ace-fca-code-review` pass to just the committed changes on the branch.
 
 ### Usage
 

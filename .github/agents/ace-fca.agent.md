@@ -5,15 +5,34 @@ description: forced-intentional-compaction
 
 # ACE-FCA
 
-The work is divided into six phases: research, planning, refine plan, implementation, post-implementation review, and retrospective.
+The work is divided into five phases: research, planning, implementation, post-implementation review, and retrospective. Code review is not a phase; it is a local adversarial gate run inside the post-implementation phase, before a pull request is pushed for Copilot Code Review.
 
 The workflow is described in .github/ace-fca/README.md
+
+## Phase entry points
+
+Each phase body lives in a project skill under `.github/ace-fca/skills/`, surfaced through a directory symlink in `.github/skills/`. A phase is entered by invoking its slash command explicitly:
+
+| Phase                      | Command                        | Skill                         |
+| -------------------------- | ------------------------------ | ----------------------------- |
+| Research                   | `/ace-fca-research`            | `ace-fca-research`            |
+| Planning                   | `/ace-fca-plan`                | `ace-fca-plan`                |
+| Implementation             | `/ace-fca-implement`           | `ace-fca-implement`           |
+| Post-implementation review | `/ace-fca-post-implementation` | `ace-fca-post-implementation` |
+| Retrospective              | `/ace-fca-retro`               | `ace-fca-retro`               |
+| Local code-review gate     | `/ace-fca-code-review`         | `ace-fca-code-review`         |
+
+Every one of these skills carries `disable-model-invocation: true`. Entering a phase is a human act: never self-select a phase skill, and never invoke one because a request sounds like research, planning, or review.
+
+**Start a fresh conversation for each phase.** A skill injects a body into the conversation it is invoked from; it does not start a session. The context separation that makes this workflow work therefore comes from the human opening a new conversation per phase, not from the skill boundary. Carrying one phase's context into the next is the failure this workflow exists to prevent.
+
+**Repository rules outrank any skill.** `.github/copilot-instructions.md`, the scoped files under `.github/instructions/`, the repository's path rules, and its approval policy take precedence over anything an invoked skill says. Where a skill body conflicts with them, the repository wins and the conflict is recorded in the retrospective.
 
 ## Tool policy
 
 ACE-FCA is a **development-mode** agent for Go service development: it modifies Sudhaus Engen source.
 
-This agent declares no `tools:` allowlist, because the workflow runs in both Copilot CLI and VS Code and the two hosts name tools differently. The rules below are therefore binding prose. Follow them as strictly as a hard allowlist.
+This agent declares no `tools:` allowlist. The rules below are therefore binding prose. Follow them as strictly as a hard allowlist.
 
 ### Never use
 
@@ -58,11 +77,11 @@ Disqualifiers (any one forces the full research + planning pass, even when every
 
 Even when compact mode is eligible, it must still emit a research document; only the planning phase may collapse. Paste the `COMPACT_MODE:` verdict into that research doc's compact-mode subsection (script for determinism, pasted verdict for auditability, mirroring the CCR-request playbook below). The minimum compact research doc contains: the original prompt, the referenced-artifact list, the staleness subsection with the pasted verdict, and a reused-infrastructure inventory. Writing any code before understanding the problem is the risk this guards against, so the research pass is never skipped.
 
-Even in compact mode, **the implementation, post-implementation review, code-review, and retrospective phases are non-negotiable**. The discipline is in the post-implementation gate (`make review` clean, coverage, integration smoke), not in the ceremony of upstream artifacts.
+Even in compact mode, **the implementation, post-implementation review, and retrospective phases are non-negotiable, as is the local code-review gate**. The discipline is in the post-implementation gate (`make review` clean, coverage, integration smoke), not in the ceremony of upstream artifacts.
 
 ## Research phase
 
-In the research phase, use the .github/ace-fca/prompts/research.prompt.md to create a research document.
+In the research phase, invoke `/ace-fca-research` to create a research document.
 
 Use the details in the GitHub issue as input to the research document.
 
@@ -75,7 +94,7 @@ The output of this phase is a single document in .github/ace-fca/research/ which
 
 ## Planning phase
 
-In the planning phase, use the .github/ace-fca/prompts/planning.prompt.md _and the research document you generated in research phase_ to create a comprehensive implementation plan.
+In the planning phase, invoke `/ace-fca-plan` _with the research document you generated in research phase_ to create a comprehensive implementation plan.
 
 Use the details and the Exit Criteria from the GitHub issue to understand the desired end state.
 
@@ -98,18 +117,9 @@ IMPORTANT: this phase is NOT complete UNTIL there are no unanswered questions.  
 - **For multi-module phases, write a one-page composition-shape ADR before parallel work starts.** Lock the constructor signatures (e.g. who takes `*pricing.Client` vs `*market.Module`; whether `charID` is resolved once in `main` or threaded through each module) before spawning parallel implementation sessions. Phase-2 modules diverged on composition (harmlessly, this time) because each PR re-decided.
 - **Always copy YAML front matter from a recent neighbor** when creating any new document in `.github/ace-fca/{plans,research,retros}/`. The convention is repository-wide; reviews catch missing blocks.
 
-## Refine plan phase
-
-After planning, use .github/ace-fca/prompts/refine-plan.prompt.md to review the plan for:
-
-1. **Decision debris** - remove pros/cons lists for rejected alternatives, historical context about rejected options, and redundant items
-2. **Missed opportunities** - identify code quality improvements in the files being modified
-
-The output of this phase is a refined plan document ready for implementation.
-
 ## Implementation phase
 
-In the implementation phase, use the .github/ace-fca/prompts/implement-plan.prompt.md _and the planning document you generated in planning phase_ to implement the plan.
+In the implementation phase, invoke `/ace-fca-implement` _with the planning document you generated in planning phase_ to implement the plan.
 
 IMPORTANT: follow the instructions in .github/instructions/*.instructions.md when implementing.
 
@@ -122,7 +132,7 @@ The output of this phase will be the feature or bug fix specified in the GitHub 
 
 ## Post-implementation review phase
 
-After implementation, use .github/ace-fca/prompts/post-implementation.prompt.md to review the modified code for:
+After implementation, invoke `/ace-fca-post-implementation` to review the modified code for:
 
 1. Technical debt (duplicate code, unused functions, tight coupling)
 2. Long functions (>50 lines, multiple responsibilities)
@@ -132,6 +142,14 @@ After implementation, use .github/ace-fca/prompts/post-implementation.prompt.md 
 6. Bad comments
 
 The output of this phase is quality-reviewed code ready for retrospective.
+
+Within this phase, run the local adversarial code-review gate in a fresh conversation before the PR is marked ready and before Copilot Code Review is requested:
+
+```
+/ace-fca-code-review
+```
+
+This gate is mandatory. It is not a phase of its own, and it does not replace Copilot Code Review.
 
 ### Code-review request playbook
 
@@ -182,7 +200,7 @@ This list exists because a worker session once merged a PR with green CI and res
 
 ## Retrospective phase
 
-In the retrospective phase, use the .github/ace-fca/prompts/retrospective.prompt.md to run a retrospective using:
+In the retrospective phase, invoke `/ace-fca-retro` to run a retrospective using:
 
 - the retrospective document created in the planning phase
 - the planning document created in the planning phase
@@ -192,4 +210,4 @@ The output of this phase will be an updated retrospective document.
 
 ### Step 0: ask the user for feedback first
 
-**CRITICAL**: before writing or updating the retrospective, call `ask_user` to solicit the user's feedback on the cycle. Do not self-draft a retro and then ask for feedback on a second pass. The user's verbatim feedback is the most valuable signal in the retrospective and must be captured before the agent's own analysis colors it. (`0001-readme-phase-0a.md` flagged this gap; the prompt-level fix lives here in case the prompt itself is missed.)
+**CRITICAL**: before writing or updating the retrospective, ask the user for feedback on the cycle. Ask in plain text, one question at a time, and wait for the answer; do not use an elicitation form. Do not self-draft a retro and then ask for feedback on a second pass. The user's verbatim feedback is the most valuable signal in the retrospective and must be captured before the agent's own analysis colors it. (`0001-readme-phase-0a.md` flagged this gap; the agent-level fix lives here in case the skill body itself is missed.)

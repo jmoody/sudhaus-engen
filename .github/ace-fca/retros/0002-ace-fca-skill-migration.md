@@ -15,10 +15,7 @@ last_updated_by: "GitHub Copilot"
 
 # Retrospective: Migrating ACE-FCA phase prompts to Copilot CLI skills
 
-**Date**: 2026-11-02 22:53:11 CET
-**Plan Document**: `.github/ace-fca/plans/0002-ace-fca-skill-migration.md`
-**Git Commit**: bc61b8b1f1362e8373fedf93bd792830a1b4c8cc
-**Branch**: feat/ace-fca-skills
+**Date**: 2026-11-02 22:53:11 CET **Plan Document**: `.github/ace-fca/plans/0002-ace-fca-skill-migration.md` **Git Commit**: bc61b8b1f1362e8373fedf93bd792830a1b4c8cc **Branch**: feat/ace-fca-skills
 
 This retrospective is created during planning and completed after implementation. Capture observations in real time with trigger phrases such as "add this to the retro".
 
@@ -37,6 +34,22 @@ None. The decisions are recorded in the plan's "Settled decisions" section. If t
 ## Implementation Notes
 
 *Real-time observations captured during implementation using trigger phrases*
+
+Implementation of 2026-11-06, all five phases.
+
+**Tested Copilot CLI version: `1.0.106-11`.** Phase 5 requires this on record because `disable-model-invocation` is undocumented and the phase gate rests on it. Re-run the model-visibility probe after any CLI upgrade.
+
+- **The gate holds on this version.** A fresh `copilot -p` session listing its available skills returned `ccr-loop`, the plugin `research`, the personal `code-review`, and the personal `ace-fca-review-plan`, and none of the six gated `ace-fca-*` phase skills. The same six all appear under Project skills in `copilot skill list`, so they load and are merely invisible to model self-selection, which is exactly the designed behaviour.
+- **No installed skill was shadowed.** The plugin `research` and the personal `code-review` both survive, confirming the `ace-fca-` prefix did its job.
+- **Phase 5 step 4 cannot be verified non-interactively, and this is a CLI limitation rather than a migration defect.** Invoking `/ace-fca-plan` in a `copilot -p` session does not inject the skill body; the session reported the skill absent from its context and answered by reading `SKILL.md` directly. The control experiment settles the cause: `/ccr-loop`, an ungated project skill that predates this migration and works interactively, also reported `NOT INJECTED` in `-p` mode. Slash-command skill injection is therefore an interactive-session feature, and the criterion "`/ace-fca-plan` injects the rewritten body" needs a human in an interactive session to close. Everything mechanically checkable about that skill passes: it is in the Project inventory, its frontmatter parses (its description renders in `copilot skill list`), and its symlink resolves.
+- **The plan's count of VS Code tool names in the planning body was one short.** The plan said twenty-six; the true figure is twenty-seven occurrences spread over twenty-six lines, because one line names `semantic_search` twice. The error came from reading a `grep -c` line count as an occurrence count. The repository-wide total of sixty-three occurrences of fifteen distinct names, and the full per-name breakdown, both verified exactly. The plan has been corrected at both sites. This is the third miscount in this work, after the dangling `bash-scripting` references and the first draft's "34" tool names, and all three shared one cause: a count restated without re-running the command that produced it.
+- **The one-fact-one-place rule caught a defect in the new skill within minutes of writing it.** Reordering the planning skill's final two steps left two sites still reading "Step 7's sweep" after the sweep became Step 8. A grep for the status values surfaced both. The rule the new Step 8 Check 2 states is the rule that found it.
+- **Deleting a step is not the same as renumbering around it.** Removing the old Step 7 and inserting the verification sweep required deciding where the sweep belongs. It went last, after the interactive ambiguity review, because the ambiguity review rewrites the plan and a mechanical sweep run before it would verify text that no longer ships.
+- **The router rewrite surfaced two conflicts the plan did not list.** `ace-fca.agent.md` justified its missing `tools:` allowlist by saying the workflow runs in both Copilot CLI and VS Code, which this migration makes false, and its retrospective Step 0 instructed the agent to call `ask_user`, which conflicts with the operator's standing rejection of the elicitation form UI. Both were corrected in the router.
+- **Gating a skill removes the only thing that used to invoke it.** The local code-review gate was previously reachable because the model could self-select `code-review.prompt.md`. Adding `disable-model-invocation: true` closed that path, and three documents still asserted the gate "runs inside the post-implementation phase" while no instruction anywhere triggered it. The gate would have been silently skipped on the first real run. Fixed by adding an explicit `/ace-fca-code-review` step to the post-implementation skill and the router. The general lesson: when a gate is closed, check what used to open it.
+- **Inserting a schema does not retire the template that contradicts it.** The planning skill's Step 3.1 still proposed `## Overview` and `## Implementation Phases:` for user sign-off, neither of which the new closed schema permits, so an agent would have obtained approval for a forbidden structure before reaching the step that imposes the schema. Step 3 now negotiates phasing only and names no document sections, since the sections are no longer negotiable.
+- **The repository's own `fix-markdown` tool found table misalignment that a careful manual check had passed.** Plan 0002's tables were reported as verified aligned; they were off by one space in two columns. Running the tool is cheaper and more reliable than measuring rows by eye, and it belongs in the loop before review rather than after.
+- **An automated review pass claimed a clean check it had not actually performed.** The review reported no em dashes in any changed file; a direct `grep` found six, all introduced by this work in the rewritten README. A reviewer's negative findings deserve the same spot-check as its positive ones.
 
 ## ACE-FCA Improvements
 

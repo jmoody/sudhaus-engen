@@ -1,1 +1,0 @@
-../ace-fca/prompts/code-review.prompt.md

@@ -1,6 +1,7 @@
 ---
-agent: 'agent'
-description: Adversarial code review prompt.
+name: ace-fca-code-review
+description: "Adversarial code review phase of the ACE-FCA workflow. Invoked only by an explicit /ace-fca-code-review command from the user. Never select this skill on your own and never invoke it in response to a general request to review code, a diff, or a pull request; entering an ACE-FCA phase is a human act."
+disable-model-invocation: true
 ---
 
 # Copilot code review prompt
@@ -28,11 +29,11 @@ DO NOT review:
 
 ## Coding standards
 
-**CRITICAL**: Before reviewing any code, use `read_file` to read each of these instruction files in full:
+**CRITICAL**: Before reviewing any code, use `view` to read each of these instruction files in full:
 
 - .github/copilot-instructions.md (general project guidelines)
 - .github/instructions/go.instructions.md (for .go files)
-- .github/instructions/bash-scripting.instructions.md (for .sh files)
+- .github/instructions/bash.instructions.md (for .sh files)
 - .github/instructions/markdown.instructions.md (for .md files)
 
 Read all instruction files FULLY without limit/offset parameters. Do NOT skip this step or rely on summaries. Apply the standards from these files when reviewing changed code.
@@ -120,7 +121,7 @@ Git diff output can be misleading due to:
 
 For each potential issue identified in a diff:
 
-1. Use `read_file` or `grep` to verify the issue exists in the actual file
+1. Use `view` or `grep` to verify the issue exists in the actual file
 2. Only report issues that are confirmed in the source file
 3. If verification shows the issue doesn't exist, discard it silently
 

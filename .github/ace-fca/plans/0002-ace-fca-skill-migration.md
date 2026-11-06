@@ -47,18 +47,18 @@ Convert the ACE-FCA phase prompts into gated, namespaced Copilot CLI project ski
 
 ### The closed plan schema
 
-| Section                    | Holds                                                     | Required  |
-| -------------------------- | --------------------------------------------------------- | --------- |
-| frontmatter                | metadata, research link, status                           | yes       |
-| `## Original Prompt`       | the originating prompt, verbatim                          | yes       |
-| `## Goal`                  | what the plan delivers, one or two sentences              | yes       |
-| `## Settled decisions`     | decisions as current truth, no rationale, no alternatives | yes       |
-| `## Starting state`        | verified facts and file paths the plan builds on          | yes       |
-| `## Out of scope`          | explicit non-goals                                        | yes       |
-| `## Implementation phases` | `### Phase N` with steps and success criteria             | yes       |
-| `## Verification`          | how completion is proven                                  | yes       |
-| `## Deliverable content`   | verbatim payload when the deliverable is text             | optional  |
-| `## References`            | links only, no prose                                      | yes       |
+| Section                    | Holds                                                     | Required |
+| -------------------------- | --------------------------------------------------------- | -------- |
+| frontmatter                | metadata, research link, status                           | yes      |
+| `## Original Prompt`       | the originating prompt, verbatim                          | yes      |
+| `## Goal`                  | what the plan delivers, one or two sentences              | yes      |
+| `## Settled decisions`     | decisions as current truth, no rationale, no alternatives | yes      |
+| `## Starting state`        | verified facts and file paths the plan builds on          | yes      |
+| `## Out of scope`          | explicit non-goals                                        | yes      |
+| `## Implementation phases` | `### Phase N` with steps and success criteria             | yes      |
+| `## Verification`          | how completion is proven                                  | yes      |
+| `## Deliverable content`   | verbatim payload when the deliverable is text             | optional |
+| `## References`            | links only, no prose                                      | yes      |
 
 ## Starting state
 
@@ -78,7 +78,7 @@ Convert the ACE-FCA phase prompts into gated, namespaced Copilot CLI project ski
 
 **Carried debt.** Four references to `.github/instructions/bash-scripting.instructions.md` exist across three files: `code-review.prompt.md:35`, `post-implementation.prompt.md:55`, and `implement-plan.prompt.md:63,199`. The file does not exist; the real file is `.github/instructions/bash.instructions.md`. Retro 0001:197 recommended this fix and it was never applied.
 
-**VS Code tool names in the prompt bodies.** Sixty-three occurrences of fifteen distinct names span all seven prompts: `semantic_search` (14), `read_file` (10), `manage_todo_list` (5), `grep_search` (5), `file_search` (5), `run_in_terminal` (4), `replace_string_in_file` (4), `get_changed_files` (4), `list_dir` (3), `list_code_usages` (3), `runSubagent` (2), and one each of `multi_replace_string_in_file`, `get_errors`, `fetch_webpage`, and `create_file`. Only the twenty-six in `planning.prompt.md` fall inside the rewrite; the rest reach the ported bodies, where they would instruct a Copilot CLI agent to call tools the host does not provide. Retro 0001:57 recorded this for the planning prompt alone.
+**VS Code tool names in the prompt bodies.** Sixty-three occurrences of fifteen distinct names span all seven prompts: `semantic_search` (14), `read_file` (10), `manage_todo_list` (5), `grep_search` (5), `file_search` (5), `run_in_terminal` (4), `replace_string_in_file` (4), `get_changed_files` (4), `list_dir` (3), `list_code_usages` (3), `runSubagent` (2), and one each of `multi_replace_string_in_file`, `get_errors`, `fetch_webpage`, and `create_file`. Only the twenty-seven in `planning.prompt.md` fall inside the rewrite; the rest reach the ported bodies, where they would instruct a Copilot CLI agent to call tools the host does not provide. Retro 0001:57 recorded this for the planning prompt alone.
 
 **Why the planning prompt is rewritten.** Of its 580 lines, roughly 50 describe the artifact and the rest describe behaviour. With no whole-document schema, agents invent one: plan 0001 has 11 top-level sections where the template names 3. The Scope Validation Checklist, defined as a pre-flight gate, materialised as a permanent document section of ticked boxes. Step 7 and `refine-plan` Part 1 carry near-identical Remove/Keep lists, and both route removed material to the research document, which is a sealed prior-phase artifact. The single bloat item the one recorded `refine-plan` pass found was cross-section repetition, a class neither list names, while four of its five improvement findings share one root cause: planning read the codebase narrowly instead of searching every site holding a value the plan changes.
 
@@ -109,10 +109,12 @@ Convert the ACE-FCA phase prompts into gated, namespaced Copilot CLI project ski
 
 #### Success criteria
 
-- [ ] `copilot skill list` shows all six `ace-fca-*` skills under Project skills.
-- [ ] `copilot skill list` still shows the plugin `research` and the personal `code-review`, proving no name was shadowed.
-- [ ] A fresh `copilot -p` session reports none of the six as model-visible.
+- [x] `copilot skill list` shows all six `ace-fca-*` skills under Project skills.
+- [x] `copilot skill list` still shows the plugin `research` and the personal `code-review`, proving no name was shadowed.
+- [x] A fresh `copilot -p` session reports none of the six as model-visible.
 - [ ] `/skills info ace-fca-plan` resolves to the symlinked project path.
+
+The last criterion is open because slash-command resolution is an interactive-session feature. See the retrospective for the control experiment that establishes this.
 
 ### Phase 2: Rewrite the planning skill around the closed schema
 
@@ -125,15 +127,15 @@ Convert the ACE-FCA phase prompts into gated, namespaced Copilot CLI project ski
 5. Delete `refine-plan` Part 1.
 6. State that the Scope Validation Checklist is a gate whose output never appears in the plan.
 7. Define the plan `status` values `draft`, `ready`, and `complete`, which retro 0001:60 recorded as undefined.
-8. Replace VS Code tool names with the Copilot CLI equivalents in `## Deliverable content`, per retro 0001:57. Twenty-six of the sixty-three occurrences are in this body.
+8. Replace VS Code tool names with the Copilot CLI equivalents in `## Deliverable content`, per retro 0001:57. Twenty-seven of the sixty-three occurrences are in this body, spread over twenty-six lines.
 
 #### Success criteria
 
-- [ ] `ace-fca-plan` contains the closed schema and no Step 7.
-- [ ] The verification step names its searches and its subagent delegation.
-- [ ] No instruction routes removed material to the research document.
-- [ ] `status` values are defined.
-- [ ] No VS Code tool name remains in the skill body.
+- [x] `ace-fca-plan` contains the closed schema and no Step 7.
+- [x] The verification step names its searches and its subagent delegation.
+- [x] No instruction routes removed material to the research document.
+- [x] `status` values are defined.
+- [x] No VS Code tool name remains in the skill body.
 
 ### Phase 3: Move the references and fix the carried debt
 
@@ -154,12 +156,12 @@ Every repair in this phase lands while the prompt tree is still present, so a po
 
 #### Success criteria
 
-- [ ] `grep -rnE "(\.prompt\.md|-prompt\.md)" --include=*.md .github docs` returns matches only inside `.github/ace-fca/research/`, `.github/ace-fca/plans/`, and `.github/ace-fca/retros/`, which are historical artifacts this migration does not rewrite.
-- [ ] `grep -rn "bash-scripting.instructions" --include=*.md .github` returns matches only inside `.github/ace-fca/retros/0001-site-rollout.md` and `.github/ace-fca/plans/0002-ace-fca-skill-migration.md`.
-- [ ] `grep -rnE "\b(semantic_search|read_file|manage_todo_list|file_search|grep_search|list_dir|list_code_usages|fetch_webpage|run_in_terminal|create_file|replace_string_in_file|multi_replace_string_in_file|get_errors|get_changed_files|runSubagent)\b" .github/ace-fca/skills` returns nothing.
-- [ ] The README workflow line names five phases and all six skills, and its extensions table has no `Refine plan` row.
-- [ ] Every path named in `ace-fca-retro/SKILL.md`'s write-back instruction resolves to an existing file.
-- [ ] `.github/ace-fca/docs/ace-fca+refine-plan.md` no longer exists and nothing links to it.
+- [x] `grep -rnE "(\.prompt\.md|-prompt\.md)" --include=*.md .github docs` returns matches only inside `.github/ace-fca/research/`, `.github/ace-fca/plans/`, and `.github/ace-fca/retros/`, which are historical artifacts this migration does not rewrite.
+- [x] `grep -rn "bash-scripting.instructions" --include=*.md .github` returns matches only inside `.github/ace-fca/retros/0001-site-rollout.md` and `.github/ace-fca/plans/0002-ace-fca-skill-migration.md`.
+- [x] `grep -rnE "\b(semantic_search|read_file|manage_todo_list|file_search|grep_search|list_dir|list_code_usages|fetch_webpage|run_in_terminal|create_file|replace_string_in_file|multi_replace_string_in_file|get_errors|get_changed_files|runSubagent)\b" .github/ace-fca/skills` returns nothing.
+- [x] The README workflow line names five phases and all six skills, and its extensions table has no `Refine plan` row.
+- [x] Every path named in `ace-fca-retro/SKILL.md`'s write-back instruction resolves to an existing file.
+- [x] `.github/ace-fca/docs/ace-fca+refine-plan.md` no longer exists and nothing links to it.
 
 ### Phase 4: Retire the prompt trees
 
@@ -172,9 +174,9 @@ Deletion runs only after Phase 3's repairs are verified, so an interrupted sessi
 
 #### Success criteria
 
-- [ ] `.github/prompts/` and `.github/ace-fca/prompts/` no longer exist.
-- [ ] `grep -rn "ace-fca/prompts/\|\.github/prompts/" --include=*.md .github docs` returns matches only inside `.github/ace-fca/research/`, `.github/ace-fca/plans/`, and `.github/ace-fca/retros/`.
-- [ ] Phase 3's three greps still return the same results after the deletions.
+- [x] `.github/prompts/` and `.github/ace-fca/prompts/` no longer exist.
+- [x] `grep -rn "ace-fca/prompts/\|\.github/prompts/" --include=*.md .github docs` returns matches only inside `.github/ace-fca/research/`, `.github/ace-fca/plans/`, and `.github/ace-fca/retros/`.
+- [x] Phase 3's three greps still return the same results after the deletions.
 
 ### Phase 5: Verify the migration end to end
 
@@ -188,11 +190,13 @@ Deletion runs only after Phase 3's repairs are verified, so an interrupted sessi
 
 #### Success criteria
 
-- [ ] `make review` passes. It is the repository regression check, not the migration gate; the greps and skill probes are the migration gate.
-- [ ] The six skills load, none is model-visible, and no installed skill was shadowed.
+- [x] `make review` passes. It is the repository regression check, not the migration gate; the greps and skill probes are the migration gate.
+- [x] The six skills load, none is model-visible, and no installed skill was shadowed.
 - [ ] `/ace-fca-plan` injects the rewritten body.
-- [ ] `ls -L .github/skills/*` resolves every entry.
-- [ ] The tested Copilot CLI version is recorded in the retrospective.
+- [x] `ls -L .github/skills/*` resolves every entry.
+- [x] The tested Copilot CLI version is recorded in the retrospective.
+
+The criterion "`/ace-fca-plan` injects the rewritten body" is open for the same reason as the Phase 1 criterion: a `copilot -p` session never injects a slash-command skill, and the ungated `/ccr-loop` behaves identically, so the limitation is the mode rather than this migration. Closing it needs a human in an interactive session.
 
 ## Verification
 
@@ -202,23 +206,23 @@ The migration gate is the set of explicit probes, not `make review`. Reference i
 
 The VS Code to Copilot CLI tool-name mapping applied in Phase 2 step 8 and Phase 3 step 10.
 
-| VS Code tool name              | Copilot CLI equivalent                                                   |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| `semantic_search`              | `semantic_code_search`, or `grep` narrowed by a file glob                |
-| `read_file`                    | `view`                                                                   |
-| `file_search`                  | `glob`                                                                   |
-| `grep_search`                  | `grep`                                                                   |
-| `list_dir`                     | `glob`, or `view` on a directory                                         |
-| `list_code_usages`             | `grep` narrowed by a file glob                                           |
-| `fetch_webpage`                | `web_fetch`                                                              |
-| `run_in_terminal`              | `bash`                                                                   |
-| `create_file`                  | `create`                                                                 |
-| `replace_string_in_file`       | `edit`                                                                   |
-| `multi_replace_string_in_file` | several `edit` calls in one response                                     |
-| `get_errors`                   | `bash` running `make build` or `make lint`                               |
-| `get_changed_files`            | `.github/ace-fca/scripts/changed-files.sh`                               |
-| `manage_todo_list`             | the `sql` tool's `todos` table                                           |
-| `runSubagent`                  | `task`                                                                   |
+| VS Code tool name              | Copilot CLI equivalent                                    |
+| ------------------------------ | --------------------------------------------------------- |
+| `semantic_search`              | `semantic_code_search`, or `grep` narrowed by a file glob |
+| `read_file`                    | `view`                                                    |
+| `file_search`                  | `glob`                                                    |
+| `grep_search`                  | `grep`                                                    |
+| `list_dir`                     | `glob`, or `view` on a directory                          |
+| `list_code_usages`             | `grep` narrowed by a file glob                            |
+| `fetch_webpage`                | `web_fetch`                                               |
+| `run_in_terminal`              | `bash`                                                    |
+| `create_file`                  | `create`                                                  |
+| `replace_string_in_file`       | `edit`                                                    |
+| `multi_replace_string_in_file` | several `edit` calls in one response                      |
+| `get_errors`                   | `bash` running `make build` or `make lint`                |
+| `get_changed_files`            | `.github/ace-fca/scripts/changed-files.sh`                |
+| `manage_todo_list`             | the `sql` tool's `todos` table                            |
+| `runSubagent`                  | `task`                                                    |
 
 ## References
 
