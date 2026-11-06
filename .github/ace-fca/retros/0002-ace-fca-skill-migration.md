@@ -9,7 +9,7 @@ repository: sudhaus-engen
 topic: "Migrating ACE-FCA phase prompts to Copilot CLI skills Retrospective"
 tags: [retrospective, ace-fca, skills, copilot-cli, workflow]
 status: in-progress
-last_updated: 2026-11-05
+last_updated: 2026-11-06
 last_updated_by: "GitHub Copilot"
 ---
 
@@ -147,3 +147,38 @@ For each finding, name the gap in the `ace-fca-code-review` or `ace-fca-post-imp
 ### Prompt Evolution Recommendations
 
 [To be completed after implementation]
+
+## Plan adversarial review (2026-11-06)
+
+### Verdict
+
+GAP - panel: `gpt-5.6-sol`, `gemini-4-argon`; reviewed 2026-11-06. Both reviewers returned GAP independently.
+
+### Gaps found
+
+| #   | Mistake class                         | Gap                                                                                                                                                         | Evidence                                                                                                            | Drives verdict |
+| --- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 1   | Silently dropped acceptance criterion | Phase 3's verification grep matches the plan itself and its own research document, and returns zero matches in the one file the criterion names as expected | `plans/0002-ace-fca-skill-migration.md:146`                                                                         | yes            |
+| 2   | Incomplete surface area               | Three live files hold stale prompt references the plan never lists, and each cites a basename, so the grep cannot see them                                  | `templates/retrospective-template.md:75,93`, `scripts/README.md:71`, `docs/ace-fca+post-implementation.md:13,21,29` | yes            |
+| 3   | Hidden ordering                       | Phase 3 step 4 edits `retrospective.prompt.md`, which Phase 1 already ported and step 7 deletes, so the shipped skill keeps the stale references            | `plans/0002-ace-fca-skill-migration.md:139,142`                                                                     | yes            |
+| 4   | Nullable upstream assumption          | `disable-model-invocation` has no fail-closed fallback, while Phase 1 step 3 asks for trigger-worded descriptions                                           | `plans/0002-ace-fca-skill-migration.md:71,100`                                                                      | no             |
+| 5   | Half-fixed sibling path               | 34 VS Code tool names survive in the five faithfully ported bodies, while the plan declares Copilot CLI the only target                                     | `plans/0002-ace-fca-skill-migration.md:83,86,122`                                                                   | no             |
+| 6   | Scope error                           | Phase 3 step 5 leaves an open decision inside a plan whose own gate forbids ambiguity                                                                       | `plans/0002-ace-fca-skill-migration.md:140`                                                                         | no             |
+| 7   | Invariant quietly dropped             | Plan 0002 violates the closed schema it defines, and planning tells agents to copy a recent neighbour                                                       | `plans/0002-ace-fca-skill-migration.md:41,54,60,77`                                                                 | no             |
+| 8   | Scope error                           | `make review` gates none of the migration; it resolves to `build imports lint test`                                                                         | `Makefile:97`                                                                                                       | no             |
+| 9   | Invariant quietly dropped             | The fresh-conversation-per-phase rule loses its enforcement surface, because skills neither start sessions nor gate phases                                  | `.github/ace-fca/README.md:7`, `research/0002-mattpocock-skills-alignment.md:63`                                    | no             |
+
+Findings 1 through 3 were raised by both reviewers. Findings 4 through 9 were raised by one reviewer each and verified against the repository before being recorded here.
+
+Set aside, with reasons: collapsing the canonical-plus-symlink layer so each `SKILL.md` sits directly under `.github/skills/` contradicts a settled decision and the `ccr-loop` precedent; adding TDD seam confirmation to planning is a research recommendation the plan places out of scope; `script/bootstrap-worktree` not copying uncommitted `.github/ace-fca/skills` is not a blocker once the work is committed on the branch; and the retro template's missing `## ACE-FCA Improvements` heading plus the `decision-records/` versus `docs/adrs/` contradiction are pre-existing debt from retro 0001:56, not introduced by this migration.
+
+### Confidence calibration
+
+Panel verdict: GAP. Plan's stated confidence: not stated; the plan's `status` is `draft`. The panel agrees with the absence of a confidence claim: gaps 1 through 3 are not judgement calls but a verification command that does not verify and a step that edits a file the following step deletes.
+
+### Planning-prompt improvement candidates
+
+- **Verification commands are asserted, never executed.** The Phase 3 grep and its expected-match list were written from memory and are wrong in both directions. The planning skill's folded verification step should require every success criterion that is a shell command to be run during planning, with its actual output pasted beside the expectation.
+- **Reference sweeps search paths, not names.** Searching `ace-fca/prompts/` missed every site citing a bare basename. The verification step should enumerate each retired identifier and search for the basename, not only the directory that contains it.
+- **A plan may name a file that an earlier phase has already replaced.** Phase 3 step 4 targets a prompt that Phase 1 copied into a skill. When a plan both moves and edits a file, the verification step should confirm that every later step names the post-move path.
+- **The plan did not apply its own schema to itself.** The closed schema was authored and then violated in the same document. The planning skill should check the finished plan against the schema it ships, since plans in `plans/` are the exemplars the next agent copies.
