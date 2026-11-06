@@ -1,6 +1,7 @@
 ---
-agent: 'agent'
-description: Research phase for ACE-FCA implementations.
+name: ace-fca-research
+description: "Research phase of the ACE-FCA workflow. Invoked only by an explicit /ace-fca-research command from the user. Never select this skill on your own and never invoke it in response to a general request to research, investigate, or look something up; entering an ACE-FCA phase is a human act."
+disable-model-invocation: true
 ---
 
 # Research with GitHub Copilot
@@ -85,7 +86,7 @@ Then wait for the user's research query.
 ### Step 1: Read any directly mentioned files first
 
 - If the user mentions specific files (tickets, docs, configs), read them FULLY first
-- **IMPORTANT**: Use the read_file tool to read entire files completely
+- **IMPORTANT**: Use the `view` tool to read entire files completely
 - **CRITICAL**: Read these files yourself before proceeding with research decomposition
 - This ensures you have full context before breaking down the research
 
@@ -94,32 +95,32 @@ Then wait for the user's research query.
 - Break down the user's query into composable research areas
 - Carefully consider the underlying patterns, connections, and architectural implications the user might be seeking
 - Identify specific components, patterns, or concepts to investigate
-- Create a research plan using manage_todo_list to track all subtasks
+- Create a research plan using the `sql` tool's `todos` table to track all subtasks
 - Consider which directories, files, or patterns are relevant
 
 ### Step 3: Conduct comprehensive research using available tools
 
 #### Step 3.1 For exploration
 
-- Use semantic_search to find relevant components and concepts across the workspace
-- **Note**: Do NOT call semantic_search in parallel with other searches. Call semantic_search first, then other search tools can be called in parallel.
-- Use file_search with glob patterns to locate specific files and directories
-- Use grep_search to find specific patterns or implementations
-- Use list_dir to explore directory structures
-- Use read_file to examine specific content in detail
-- Use `list_code_usages` to trace references across the workspace
+- Use `semantic_code_search` to find relevant components and concepts across the workspace
+- **Note**: Do NOT call `semantic_code_search` in parallel with other searches. Call `semantic_code_search` first, then other search tools can be called in parallel.
+- Use `glob` to locate specific files and directories
+- Use `grep` to find specific patterns or implementations
+- Use `glob` to explore directory structures
+- Use `view` to examine specific content in detail
+- Use `grep` narrowed by a file glob to trace references across the workspace
 - **EXCLUDE from searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
 
 #### Step 3.2 For documentation research
 
 - Search for existing documentation and README files (excluding `.github/ace-fca/README.md`)
 - Look for historical context in `.github/ace-fca/research/`, `.github/ace-fca/plans/` directories
-- Use semantic_search to find relevant documentation across the workspace (excluding `.github/ace-fca/archives/**/*`)
+- Use `semantic_code_search` to find relevant documentation across the workspace (excluding `.github/ace-fca/archives/**/*`)
 - **EXCLUDE from searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
 
 #### Step 3.3 For web research (only if user explicitly asks)
 
-- Use fetch_webpage for external documentation and resources
+- Use `web_fetch` for external documentation and resources
 - Include links in your final report when using web research
 
 #### Step 3.4 Research strategy
@@ -129,7 +130,7 @@ Then wait for the user's research query.
 - Use multiple search approaches (semantic, file patterns, grep) for comprehensive coverage
 - Document findings as you go to avoid losing context
 - Focus on understanding how components interact and connect
-- **CRITICAL**: Do not call semantic_search in parallel with other searches
+- **CRITICAL**: Do not call `semantic_code_search` in parallel with other searches
 
 ### Step 4: Synthesize findings systematically
 
@@ -175,14 +176,13 @@ The following decisions will need to be made during planning:
 
 **NEVER manually create YAML frontmatter for research documents.**
 
-Generate metadata using the generate-metadata.sh script.
-Replace `<your-model-name>` with your actual model (e.g., "claude-opus-4.5", "gpt-4o"):
+Generate metadata using the generate-metadata.sh script. Replace `<your-model-name>` with your actual model (e.g., "claude-opus-4.5", "gpt-4o"):
 ```bash
 .github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"
 ```
 
 - **CRITICAL**: Run the `.github/ace-fca/scripts/generate-metadata.sh` script to generate all metadata
-- Use run_in_terminal: `.github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"`
+- Use `bash`: `.github/ace-fca/scripts/generate-metadata.sh --agent-llm "<your-model-name>"`
 - **NEVER manually create YAML frontmatter** - always use the script
 - Copy the script output as the foundation for your document
 
@@ -209,7 +209,7 @@ Path: `.github/ace-fca/research/000N-description.md`
 - Use the metadata gathered in step 6
 - **CRITICAL**: Follow `.github/instructions/markdown.instructions.md` for all formatting
 - Reference applicable instruction files in `.github/instructions/` as needed
-- Create the research document using create_file
+- Create the research document using `create`
 - Structure the document with YAML frontmatter followed by content:
   ```markdown
   ---
@@ -268,7 +268,7 @@ Path: `.github/ace-fca/research/000N-description.md`
 
 ### Step 8: Add GitHub permalinks (if applicable)
 
-- Check if on main branch or if commit is pushed using run_in_terminal
+- Check if on main branch or if commit is pushed using `bash`
 - If appropriate, generate GitHub permalinks using repository information
 - Create permalinks: `https://github.com/{owner}/{repo}/blob/{commit}/{file}#L{line}`
 - Update file references with permalinks in the document
@@ -290,7 +290,7 @@ When presenting multiple issues, questions, or findings to the user:
 
 ### Step 10: Handle follow-up questions
 
-- If the user has follow-up questions, use replace_string_in_file to update the research document
+- If the user has follow-up questions, use `edit` to update the research document
 - Update the frontmatter fields `last_updated` and `last_updated_by`
 - Add `last_updated_note: "Added follow-up research for [brief description]"` to frontmatter
 - Add a new section: `## Follow-up Research [timestamp]`
@@ -308,12 +308,12 @@ When presenting multiple issues, questions, or findings to the user:
   - ALWAYS gather metadata before writing the document (step 6 before step 7)
   - NEVER write the research document with placeholder values
 - **Tool usage**: Leverage multiple search tools for comprehensive coverage:
-  - semantic_search: Conceptual and structural understanding
-  - grep_search: Specific patterns and content
-  - file_search: File location and structure exploration
-  - read_file: Detailed content examination
+  - `semantic_code_search`: Conceptual and structural understanding
+  - `grep`: Specific patterns and content
+  - `glob`: File location and structure exploration
+  - `view`: Detailed content examination
   - **EXCLUDE from all searches**: `.github/ace-fca/README.md`, `.github/ace-fca/archives/**/*`, `**/[Tt][Oo][Dd][Oo]*`
-- **Progress tracking**: Use manage_todo_list to keep research organized and show progress
+- **Progress tracking**: Use the `sql` tool's `todos` table to keep research organized and show progress
 - **Documentation focus**: Document existing content without evaluation or criticism
 - **Markdown formatting**: Follow `.github/instructions/markdown.instructions.md` for all document formatting
 - **Frontmatter consistency**:

@@ -14,10 +14,7 @@ last_updated_by: "GitHub Copilot"
 
 # Retrospective: [Plan Topic]
 
-**Date**: YYYY-MM-DD HH:MM:SS TZ
-**Plan Document**: [Link to plan document]
-**Git Commit**: [commit hash]
-**Branch**: [branch name]
+**Date**: YYYY-MM-DD HH:MM:SS TZ **Plan Document**: [Link to plan document] **Git Commit**: [commit hash] **Branch**: [branch name]
 
 ## Decision Records Created
 
@@ -72,7 +69,7 @@ Output of `.github/skills/ccr-loop/scripts/ccr-loop.sh capture <pr>` (one thread
 
 ### Local-gate gaps and fixes
 
-For each finding, name the gap in `code-review.prompt.md` or `post-implementation.prompt.md` that let it slip past the local review, and the generalized, deduped check added there (or the reason none was warranted).
+For each finding, name the gap in `ace-fca-code-review` or `ace-fca-post-implementation` that let it slip past the local review, and the generalized, deduped check added there (or the reason none was warranted).
 
 ## Creative Icebreakers
 
@@ -90,4 +87,4 @@ For each finding, name the gap in `code-review.prompt.md` or `post-implementatio
 [Specific suggestions for workflow, tool, or collaboration enhancements]
 
 ### Prompt Evolution Recommendations
-[Suggested improvements to research-prompt.md, planning-prompt.md, implement-plan-prompt.md, or retrospective-prompt.md]
+[Suggested improvements to the `ace-fca-research`, `ace-fca-plan`, `ace-fca-implement`, or `ace-fca-retro` skills]

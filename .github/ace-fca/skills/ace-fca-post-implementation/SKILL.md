@@ -1,6 +1,7 @@
 ---
-agent: 'agent'
-description: Post-implementation quality review for ACE-FCA implementations.
+name: ace-fca-post-implementation
+description: "Post-implementation quality review phase of the ACE-FCA workflow. Invoked only by an explicit /ace-fca-post-implementation command from the user. Never select this skill on your own and never invoke it in response to a general request to review quality or check finished work; entering an ACE-FCA phase is a human act."
+disable-model-invocation: true
 ---
 
 # Post-implementation review
@@ -15,7 +16,7 @@ Implementation agents optimize for "make the tests pass" and "follow the plan." 
 
 ## Scope
 
-**Only review code modified in this implementation.** Use `get_changed_files` (or appropriate base branch) to identify changed files.
+**Only review code modified in this implementation.** Use `.github/ace-fca/scripts/changed-files.sh` (or appropriate base branch) to identify changed files.
 
 Do not review:
 - Code that existed before this implementation
@@ -52,7 +53,7 @@ Review each modified file for:
 ### 5. Style guide violations
 - Check against `.github/instructions/*.instructions.md`
 - Go: No `Get`/`Set` prefixes, use `any` not `interface{}`, use `testify/require` (see `.github/instructions/go.instructions.md`)
-- Bash: functions, error handling, quoting (see `.github/instructions/bash-scripting.instructions.md`)
+- Bash: functions, error handling, quoting (see `.github/instructions/bash.instructions.md`)
 - Markdown: sentence case headings, minimal bold (see `.github/instructions/markdown.instructions.md`)
 
 ### 6. Documentation accuracy
@@ -101,6 +102,18 @@ Present findings ONE AT A TIME. After each finding, STOP and WAIT for human resp
 
 Fix now? (yes/no/defer)
 ```
+
+## Local code-review gate (MANDATORY)
+
+The quality checks above are this skill's own pass over the change. They do not replace the local adversarial code review, which is a separate gate with its own skill and must run before the pull request is marked ready and before Copilot Code Review is requested.
+
+Run it in a **fresh conversation**, because it must read the diff without the context that produced it:
+
+```
+/ace-fca-code-review
+```
+
+The gate is gated: `ace-fca-code-review` cannot select itself, so it runs only when invoked by this command. Do not skip it, and do not substitute the checks above for it. Address its findings before continuing to the pull request checks below, and record any gap it caught that this skill missed under `### Local-gate gaps and fixes` in the retrospective.
 
 ## Pull request checks
 

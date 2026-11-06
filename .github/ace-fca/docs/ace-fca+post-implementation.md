@@ -13,20 +13,20 @@ Implementation agents optimize for "tests pass" and "plan complete." This create
 A quality review after implementation completes:
 
 ```
-Research → Plan → Refine Plan → Implement → Post-Review → Retrospective
+Research → Plan → Implement → Post-Review → Retrospective
 ```
 
 ## How it works
 
-### Automatic (built into implement-plan-prompt.md)
+### Automatic (built into the `ace-fca-implement` skill)
 
 Post-Implementation Quality Review runs before declaring completion:
 - Reviews modified code for quality issues
 - Classifies by severity (🔴 Critical, 🟡 Important, 🟢 Nice-to-have)
 
-### Manual (standalone prompt)
+### Manual (standalone skill)
 
-When automatic review is insufficient, run `post-implementation-prompt.md` separately:
+When automatic review is insufficient, invoke `/ace-fca-post-implementation` separately:
 - Scopes to `git diff` changes only
 - Presents findings one-by-one
 - Updates retrospective with findings

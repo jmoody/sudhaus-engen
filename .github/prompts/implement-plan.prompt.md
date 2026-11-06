@@ -1,1 +1,0 @@
-../ace-fca/prompts/implement-plan.prompt.md
