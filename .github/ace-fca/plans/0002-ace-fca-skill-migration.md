@@ -7,7 +7,7 @@ branch: feat/ace-fca-skills
 repository: sudhaus-engen
 topic: "Migrating ACE-FCA phase prompts to Copilot CLI skills"
 tags: [plan, ace-fca, skills, copilot-cli, workflow]
-status: ready
+status: complete
 research_document: ".github/ace-fca/research/0002-mattpocock-skills-alignment.md"
 last_updated: 2026-11-06
 last_updated_by: "GitHub Copilot"
@@ -112,9 +112,7 @@ Convert the ACE-FCA phase prompts into gated, namespaced Copilot CLI project ski
 - [x] `copilot skill list` shows all six `ace-fca-*` skills under Project skills.
 - [x] `copilot skill list` still shows the plugin `research` and the personal `code-review`, proving no name was shadowed.
 - [x] A fresh `copilot -p` session reports none of the six as model-visible.
-- [ ] `/skills info ace-fca-plan` resolves to the symlinked project path.
-
-The last criterion is open because slash-command resolution is an interactive-session feature. See the retrospective for the control experiment that establishes this.
+- [x] `copilot skill list --json` reports `ace-fca-plan` with `"source": "project"` and a `path` under `.github/skills/`, proving the symlink resolves. The plan originally named `/skills info ace-fca-plan`; no such command exists, and the JSON harness is non-interactive, so this criterion is closed rather than deferred.
 
 ### Phase 2: Rewrite the planning skill around the closed schema
 
@@ -192,11 +190,15 @@ Deletion runs only after Phase 3's repairs are verified, so an interrupted sessi
 
 - [x] `make review` passes. It is the repository regression check, not the migration gate; the greps and skill probes are the migration gate.
 - [x] The six skills load, none is model-visible, and no installed skill was shadowed.
-- [ ] `/ace-fca-plan` injects the rewritten body.
+- [x] `/ace-fca-plan` injects the rewritten body.
 - [x] `ls -L .github/skills/*` resolves every entry.
 - [x] The tested Copilot CLI version is recorded in the retrospective.
 
-The criterion "`/ace-fca-plan` injects the rewritten body" is open for the same reason as the Phase 1 criterion: a `copilot -p` session never injects a slash-command skill, and the ungated `/ccr-loop` behaves identically, so the limitation is the mode rather than this migration. Closing it needs a human in an interactive session.
+The criterion "`/ace-fca-plan` injects the rewritten body" cannot be checked from a `copilot -p` session, which never injects a slash-command skill. The ungated `/ccr-loop`, which predates this migration, behaves identically, so the limitation is the mode rather than this migration. It was therefore confirmed by the operator in an interactive session, using this procedure:
+
+1. Type `/ace-fca-plan` and press enter.
+2. Ask, without letting the agent read any files: "Name the sections of the closed plan document schema, in order."
+3. The body was injected if the answer lists the ten schema sections from frontmatter through `## References`. It was not injected if the agent has to open `SKILL.md` to answer, or reports that no skill is in its context.
 
 ## Verification
 
