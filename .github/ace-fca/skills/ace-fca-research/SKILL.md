@@ -86,7 +86,7 @@ Then wait for the user's research query.
 ### Step 1: Read any directly mentioned files first
 
 - If the user mentions specific files (tickets, docs, configs), read them FULLY first
-- **IMPORTANT**: Use the `view` tool to read entire files completely
+- **IMPORTANT**: Use the `view` tool to read entire files completely. `view` truncates files larger than 20KB, so for a large file pass `forceReadLargeFiles: true` and confirm the content is not truncated before relying on it. A silently truncated read looks exactly like a complete one.
 - **CRITICAL**: Read these files yourself before proceeding with research decomposition
 - This ensures you have full context before breaking down the research
 

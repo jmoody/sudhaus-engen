@@ -13,7 +13,7 @@ You are tasked with implementing an approved technical plan from `.github/ace-fc
 When given a plan path:
 - Read the plan completely and check for any existing checkmarks (- [x])
 - Read the original ticket and all files mentioned in the plan
-- **Read files fully** - never use limit/offset parameters, you need complete context
+- **Read files fully** - never use a `view_range`, you need complete context. `view` truncates files larger than 20KB, so pass `forceReadLargeFiles: true` for a large plan rather than acting on a partial read.
 - Think deeply about how the pieces fit together
 - Create a todo list to track your progress
 - Start implementing if you understand what needs to be done
@@ -247,7 +247,7 @@ After completing implementation, review the modified content for quality issues:
 5. Style guide violations (`.github/instructions/*.instructions.md`)
 6. Bad comments (past state references, redundant explanations)
 
-**Scope**: Only review content modified in this implementation (use `.github/ace-fca/scripts/changed-files.sh`).
+**Scope**: Only review content modified in this implementation (use `.github/ace-fca/scripts/changed-files.sh --include-uncommitted`, so uncommitted work is not skipped).
 
 **Severity classification**:
 - :red_circle: Critical: Fix before merge
@@ -255,7 +255,7 @@ After completing implementation, review the modified content for quality issues:
 - :green_circle: Nice-to-have: Future improvement
 
 **Process**:
-1. Use `.github/ace-fca/scripts/changed-files.sh` to identify modified files
+1. Use `.github/ace-fca/scripts/changed-files.sh --include-uncommitted` to identify modified files
 2. Review each modified file for the issues above
 3. Present findings ONE AT A TIME
 4. **STOP and WAIT for human response** before continuing

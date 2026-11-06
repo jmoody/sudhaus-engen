@@ -139,7 +139,7 @@ Then wait for the user's input.
 - Research documents
 - Related implementation plans
 - Any data files mentioned
-- **IMPORTANT**: Use the `view` tool WITHOUT a view_range parameter to read entire files
+- **IMPORTANT**: Use the `view` tool WITHOUT a view_range parameter to read entire files. `view` truncates files larger than 20KB, so for a large file (a long plan or research document) pass `forceReadLargeFiles: true` and confirm the content is not truncated before relying on it. A silently truncated read looks exactly like a complete one.
 - **CRITICAL**: DO NOT use the `task` tool before reading these files yourself in the main context
 - **NEVER** read files partially - if a file is mentioned, read it completely
 

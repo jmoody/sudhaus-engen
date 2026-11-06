@@ -68,12 +68,15 @@ The script:
 
 ## changed-files.sh
 
-Lists the files changed on the current branch relative to a base branch (`git diff BASE...HEAD` against the merge-base). Used to scope the local `ace-fca-code-review` pass to just the committed changes on the branch.
+Lists the files changed on the current branch relative to a base branch (`git diff BASE...HEAD` against the merge-base). Used to scope the local `ace-fca-code-review` pass to the changes on the branch.
+
+By default the list covers committed changes only, so a review scoped to it skips anything still sitting in the working tree. The script warns on stderr when the tree is dirty; pass `--include-uncommitted` to fold staged, unstaged, and untracked files into the list.
 
 ### Usage
 
 ```bash
-./changed-files.sh                       # all changed files vs. main
+./changed-files.sh                       # all committed changed files vs. main
+./changed-files.sh --include-uncommitted # also include working-tree changes
 ./changed-files.sh --base develop        # compare against a different base
 ./changed-files.sh -e go -e sh           # only .go and .sh files
 ./changed-files.sh --existing            # only files that still exist

@@ -29,14 +29,14 @@ DO NOT review:
 
 ## Coding standards
 
-**CRITICAL**: Before reviewing any code, use `view` to read each of these instruction files in full:
+**CRITICAL**: Before reviewing any code, use `view` to read each of these instruction files in full. `view` truncates files larger than 20KB, so pass `forceReadLargeFiles: true` for any instruction file that may exceed it rather than reviewing against a partial standard.
 
 - .github/copilot-instructions.md (general project guidelines)
 - .github/instructions/go.instructions.md (for .go files)
 - .github/instructions/bash.instructions.md (for .sh files)
 - .github/instructions/markdown.instructions.md (for .md files)
 
-Read all instruction files FULLY without limit/offset parameters. Do NOT skip this step or rely on summaries. Apply the standards from these files when reviewing changed code.
+Read all instruction files FULLY without a `view_range`. Do NOT skip this step or rely on summaries. Apply the standards from these files when reviewing changed code.
 
 ## Focus areas
 

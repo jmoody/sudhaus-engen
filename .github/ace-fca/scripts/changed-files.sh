@@ -9,10 +9,18 @@ Usage: $0 [OPTIONS]
 List the files changed on the current branch relative to a base branch,
 computed as the committed diff against the merge-base (git diff BASE...HEAD).
 
+By default this omits uncommitted work. A review scoped to this list therefore
+skips anything still in the working tree, so the script warns on stderr when the
+tree is dirty. Pass --include-uncommitted to review working-tree changes too.
+
 OPTIONS:
   -b, --base <ref>     Base branch or ref to compare against (default: main).
   -e, --ext <ext>      Only list files with this extension (e.g. md, go, sh).
                        Repeatable: -e md -e sh lists both. Omit the leading dot.
+  -u, --include-uncommitted
+                       Also list staged, unstaged, and untracked working-tree
+                       changes. Without this, only committed changes are listed
+                       and a dirty working tree is reported as a warning.
       --existing       Only list files that still exist in the working tree.
       --no-symlinks    Exclude symlinks (list real files only).
   -h, --help           Show this help message.
@@ -23,6 +31,10 @@ EOF
 
 log_error() {
   echo "[ERROR] $*" >&2
+}
+
+log_warn() {
+  echo "[WARN] $*" >&2
 }
 
 long_optarg() {
@@ -53,20 +65,35 @@ matches_ext() {
   return 1
 }
 
+collect_files() {
+  local merge_base="$1"
+  local include_uncommitted="$2"
+
+  {
+    git diff --name-only "${merge_base}...HEAD"
+    if [[ "${include_uncommitted}" == true ]]; then
+      git diff --name-only HEAD
+      git ls-files --others --exclude-standard
+    fi
+  } | sort -u
+}
+
 main() {
   local base="main"
   local exts=()
   local existing=false
   local no_symlinks=false
+  local include_uncommitted=false
 
   local argc=$#
   local opt
   local next
-  while getopts ":b:e:h-:" opt; do
+  while getopts ":b:e:hu-:" opt; do
     case "${opt}" in
       b) base="${OPTARG}" ;;
       e) exts+=("${OPTARG}") ;;
       h) usage; exit 0 ;;
+      u) include_uncommitted=true ;;
       -)
         case "${OPTARG}" in
           base) next="$(long_optarg base "${argc}" "${OPTIND}" "${!OPTIND-}")" || return 1
@@ -76,6 +103,7 @@ main() {
                OPTIND=$(( OPTIND + 1 )); exts+=("${next}") ;;
           ext=*) exts+=("${OPTARG#*=}") ;;
           existing) existing=true ;;
+          include-uncommitted) include_uncommitted=true ;;
           no-symlinks) no_symlinks=true ;;
           help) usage; exit 0 ;;
           *) log_error "Unknown option: --${OPTARG}"; return 1 ;;
@@ -95,6 +123,12 @@ main() {
   local merge_base
   merge_base="$(git merge-base "${base}" HEAD)"
 
+  local dirty
+  dirty="$(git status --porcelain)"
+  if [[ -n "${dirty}" && "${include_uncommitted}" == false ]]; then
+    log_warn "Working tree is dirty; this list covers committed changes only. Commit first, or pass --include-uncommitted, or the review will skip uncommitted work."
+  fi
+
   local file
   while IFS= read -r file; do
     [[ -z "${file}" ]] && continue
@@ -108,7 +142,7 @@ main() {
       continue
     fi
     printf '%s\n' "${file}"
-  done < <(git diff --name-only "${merge_base}...HEAD")
+  done < <(collect_files "${merge_base}" "${include_uncommitted}")
 }
 
 main "$@"

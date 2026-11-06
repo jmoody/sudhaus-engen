@@ -55,7 +55,7 @@ I'll analyze the completed work and provide comprehensive feedback for improving
 - Completed plan document
 - Existing retrospective document (if any)
 - Any referenced implementation files or results
-- **IMPORTANT**: Use the `view` tool WITHOUT a view_range parameter
+- **IMPORTANT**: Use the `view` tool WITHOUT a view_range parameter. `view` truncates files larger than 20KB, so for a large plan or retrospective pass `forceReadLargeFiles: true` and confirm the content is not truncated before relying on it.
 - **CRITICAL**: Read these files completely before analysis
 
 #### Review implementation changes

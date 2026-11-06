@@ -16,7 +16,7 @@ Implementation agents optimize for "make the tests pass" and "follow the plan." 
 
 ## Scope
 
-**Only review code modified in this implementation.** Use `.github/ace-fca/scripts/changed-files.sh` (or appropriate base branch) to identify changed files.
+**Only review code modified in this implementation.** Use `.github/ace-fca/scripts/changed-files.sh --include-uncommitted` (or appropriate base branch) to identify changed files. Without that flag the list covers committed changes only and the pass silently skips work still in the working tree.
 
 Do not review:
 - Code that existed before this implementation

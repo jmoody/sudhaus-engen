@@ -105,15 +105,18 @@ latest_review_body() {
   fi
 }
 
-# CCR reports findings against code that has not changed since the last review inside a
-# "previously missed issues" block in the review body. Those never become review threads,
-# so a thread-only check reports a clean loop while they are still outstanding.
+# CCR reports findings outside review threads in two places, and a thread-only check reports
+# a clean loop while either is outstanding.
 #
-# The block is a <details> whose summary counts the findings, and each finding is a nested
-# <details> inside it. Match the singular "issue" so that both "1 previously missed issue"
-# and "N previously missed issues" start the capture, and track the <details> depth so the
-# capture ends on the tag that closes the block rather than on a sibling section that may
-# or may not follow it.
+# 1. A "previously missed issues" <details> block, covering code unchanged since the last
+#    review. The block is a <details> whose summary counts the findings, and each finding is
+#    a nested <details> inside it. Match the singular "issue" so that both "1 previously
+#    missed issue" and "N previously missed issues" start the capture, and track the <details>
+#    depth so the capture ends on the tag that closes the block rather than on a sibling
+#    section that may or may not follow it.
+# 2. A "Needs a closer look" heading in the ccr-overview-v2 body, holding prose findings that
+#    are never threads and never <details>. This section coexists with "No open issues", so
+#    neither an empty thread list nor that banner means the review is clean.
 overview_findings() {
   local repo="$1"
   local pr="$2"
@@ -127,16 +130,23 @@ overview_findings() {
   # CCR pads paths with zero-width spaces, which stops the printed location from being
   # copied straight into an editor or a grep.
   zwsp="$(printf '\342\200\213')"
-  awk '
-    !capture && /previously missed issue/ { capture = 1; depth = 1; next }
-    capture {
-      opens = gsub(/<details/, "<details")
-      closes = gsub(/<\/details>/, "</details>")
-      depth += opens - closes
-      if (depth <= 0) { capture = 0; next }
-      print
-    }
-  ' <<< "${body}" \
+  {
+    awk '
+      !capture && /previously missed issue/ { capture = 1; depth = 1; next }
+      capture {
+        opens = gsub(/<details/, "<details")
+        closes = gsub(/<\/details>/, "</details>")
+        depth += opens - closes
+        if (depth <= 0) { capture = 0; next }
+        print
+      }
+    ' <<< "${body}"
+    awk '
+      !capture && /Needs a closer look/ { capture = 1; next }
+      capture && (/^###/ || /^<details/ || /^<sub>/ || /No open issues/) { capture = 0 }
+      capture { print }
+    ' <<< "${body}"
+  } \
     | sed -e 's|<picture>.*alt="\([A-Za-z]*\) severity".*</picture>|\1:|g' -e 's/<[^>]*>//g' -e "s/${zwsp}//g" \
     | awk 'NF'
 }
